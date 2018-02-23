@@ -53,7 +53,17 @@ export class TSResolverGenerator {
             ' * Note that this type is designed to be compatible with graphql-tools resolvers',
             ' * However, you can still use other generated interfaces to make your resolver type-safed',
             ' */',
-            `export interface ${this.options.typePrefix}Resolver {`
+`
+// TODO: Make this handle Nullability
+// export type Result<T> = T | Promise<T>
+// export type NullableResult<T> = T | null | Promise<T | null>
+
+export type Result<T> = T | null | Promise<T | null>
+export type GQLField<P, Args, Ctx, T> =
+ | Result<T>
+ | ((parent: P, args: Args, context: Ctx, info: GraphQLResolveInfo) => Result<T>)
+`,
+            `export interface AllResolvers {`
         ];
 
         gqlTypes.map(type => {
@@ -95,11 +105,11 @@ export class TSResolverGenerator {
 
     private generateTypeResolver(type: IntrospectionUnionType | IntrospectionInterfaceType) {
         const possbileTypes = type.possibleTypes.map(pt => `'${pt.name}'`);
-        const interfaceName = `${this.options.typePrefix}${type.name}TypeResolver`;
+        const interfaceName = `${this.options.typePrefix}${type.name}Interface`;
 
         this.resolverInterfaces.push(...[
-            `export interface ${interfaceName}<TParent = any> {`,
-            `(parent: TParent, context: ${this.contextType}, info: GraphQLResolveInfo): ${possbileTypes.join(' | ')};`,
+            `export interface ${interfaceName}<P = any> {`,
+            `(parent: P, context: ${this.contextType}, info: GraphQLResolveInfo): ${possbileTypes.join(' | ')};`,
             '}'
         ]);
 
@@ -112,7 +122,7 @@ export class TSResolverGenerator {
     }
 
     private generateObjectResolver(objectType: IntrospectionObjectType) {
-        const typeResolverName = `${this.options.typePrefix}${objectType.name}TypeResolver`;
+        const typeResolverName = `${this.options.typePrefix}${objectType.name}`;
         const typeResolverBody: string[] = [];
         const fieldResolversTypeDefs: string[] = [];
 
@@ -123,7 +133,7 @@ export class TSResolverGenerator {
             let uppercaseFisrtFieldName = toUppercaseFirst(field.name);
 
             if (field.args.length > 0) {
-                argsType = `${objectType.name}To${uppercaseFisrtFieldName}Args`;
+                argsType = `${objectType.name}_${uppercaseFisrtFieldName}_Args`;
                 const argsBody: string[] = [];
                 field.args.forEach(arg => {
                     const argRefField = getFieldRef(arg);
@@ -140,31 +150,38 @@ export class TSResolverGenerator {
                     argsBody.push(argFieldNameAndType);
                 });
 
-                fieldResolversTypeDefs.push(...[
+                fieldResolversTypeDefs.push([
                     `export interface ${argsType} {`,
-                    ...argsBody,
+                    argsBody.join(', '),
                     '}'
-                ]);
+                ].join(' '));
+                // argsType = [
+                //   `{ `,
+                //   ...argsBody,
+                //   ' }'
+                // ].join('');
             }
 
             // generate field type
-            const fieldResolverName = `${objectType.name}To${uppercaseFisrtFieldName}Resolver`;
+            const fieldResolverName = `${objectType.name}_${uppercaseFisrtFieldName}_Field`;
+
+            console.log('field', field)
+            const typeName = `${field.type['name']}`
 
             fieldResolversTypeDefs.push(...[
-                `export interface ${fieldResolverName}<TParent = any, TResult = any> {`,
-                // TODO: some strategy to support parent type and return type
-                `(parent: TParent, args: ${argsType}, context: ${this.contextType}, info: GraphQLResolveInfo): TResult;`,
-                '}',
-                ''
+                `export type ${fieldResolverName}<P> = GQLField<P, ${argsType}, ${this.contextType}, ${typeName}>`
             ]);
 
             typeResolverBody.push(...[
-                `${field.name}?: ${fieldResolverName}<TParent>;`
+                `${field.name}?: ${fieldResolverName}<P>`
             ]);
         });
 
         this.resolverInterfaces.push(...[
-            `export interface ${typeResolverName}<TParent = any> {`,
+          '',
+          `// --- ${typeResolverName}`,
+          '',
+            `export interface ${typeResolverName}<P = any> {`,
             ...typeResolverBody,
             '}',
             '',

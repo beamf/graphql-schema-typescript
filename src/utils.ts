@@ -42,9 +42,14 @@ function klawSync(path: string, filterRegex: RegExp, fileNames: string[] = []) {
     return fileNames;
 }
 
+export const getSchemaContentViaLocalFile = (path: string): string => {
+  const files = klawSync(path, /\.(graphql|gql)$/);
+  const allTypeDefs = files.map(filePath => fs.readFileSync(filePath, 'utf-8')).join('\n');
+  return allTypeDefs;
+};
+
 export const introspectSchemaViaLocalFile = async (path: string): Promise<IntrospectionQuery> => {
-    const files = klawSync(path, /\.(graphql|gql)$/);
-    const allTypeDefs = files.map(filePath => fs.readFileSync(filePath, 'utf-8')).join('\n');
+    const allTypeDefs = getSchemaContentViaLocalFile(path)
     return await introspect(allTypeDefs);
 };
 
@@ -146,35 +151,35 @@ export const formatTabSpace = (lines: string[], tabSpaces: number): string[] => 
 export const createFieldRef = (fieldName: string, refName: string, fieldModifier: string): string => {
     switch (fieldModifier) {
         case '': {
-            return `${fieldName}?: ${refName};`;
+            return `${fieldName}?: ${refName}`;
         }
 
         case 'NON_NULL': {
-            return `${fieldName}: ${refName};`;
+            return `${fieldName}: ${refName}`;
         }
 
         case 'LIST': {
-            return `${fieldName}?: (${refName} | null)[];`;
+            return `${fieldName}?: (${refName} | null)[]`;
         }
 
         case 'LIST NON_NULL': {
-            return `${fieldName}?: ${refName}[];`;
+            return `${fieldName}?: ${refName}[]`;
         }
 
         case 'NON_NULL LIST': {
-            return `${fieldName}: (${refName} | null)[];`;
+            return `${fieldName}: (${refName} | null)[]`;
         }
 
         case 'NON_NULL LIST NON_NULL': {
-            return `${fieldName}: ${refName}[];`;
+            return `${fieldName}: ${refName}[]`;
         }
 
         case 'LIST NON_NULL LIST NON_NULL': {
-            return `${fieldName}?: ${refName}[][];`;
+            return `${fieldName}?: ${refName}[][]`;
         }
 
         case 'NON_NULL LIST NON_NULL LIST NON_NULL': {
-            return `${fieldName}: ${refName}[][];`;
+            return `${fieldName}: ${refName}[][]`;
         }
 
         // TODO: make it to handle any generic case

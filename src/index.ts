@@ -4,7 +4,7 @@ import { GraphQLSchema } from 'graphql';
 import { GenerateTypescriptOptions, defaultOptions } from './types';
 import { TSResolverGenerator, GenerateResolversResult } from './typescriptResolverGenerator';
 import { TypeScriptGenerator } from './typescriptGenerator';
-import { formatTabSpace, introspectSchema, introspectSchemaViaLocalFile } from './utils';
+import { formatTabSpace, introspectSchema, getSchemaContentViaLocalFile, introspect } from './utils';
 import { isString } from 'util';
 import { IntrospectionQuery } from 'graphql/utilities/introspectionQuery';
 
@@ -38,8 +38,11 @@ export const generateTSTypesAsString = async (schema: GraphQLSchema | string, op
     const mergedOptions = { ...defaultOptions, ...options };
 
     let introspectResult: IntrospectionQuery;
+    let schemaContent = '';
     if (isString(schema)) {
-        introspectResult = await introspectSchemaViaLocalFile(path.resolve(schema));
+        schemaContent = getSchemaContentViaLocalFile(path.resolve(schema));
+        introspectResult = await introspect(schemaContent);
+        // introspectResult = await introspectSchemaViaLocalFile(path.resolve(schema));
     } else {
         introspectResult = await introspectSchema(schema);
     }
@@ -59,6 +62,12 @@ export const generateTSTypesAsString = async (schema: GraphQLSchema | string, op
     let header = [...typeResolvers.importHeader, jsDoc];
 
     let body: string[] = [
+      `
+// tslint:disable
+/* Schema Content
+${schemaContent}
+*/
+      `,
         ...typeDefsDecoration,
         ...typeDefs,
         ...typeResolversDecoration,

@@ -42,16 +42,19 @@ export class TypeScriptGenerator {
                         break;
                     }
 
-                    case 'OBJECT':
                     case 'INPUT_OBJECT':
-                    case 'INTERFACE': {
-                        typeScriptDefs = typeScriptDefs.concat(this.generateObjectType(gqlType, gqlTypes));
-                        break;
+                    {
+                      typeScriptDefs = typeScriptDefs.concat(this.generateObjectType(gqlType, gqlTypes));
+                      break;
                     }
-
+                    
                     case 'UNION': {
-                        typeScriptDefs = typeScriptDefs.concat(this.generateUnionType(gqlType));
-                        break;
+                      typeScriptDefs = typeScriptDefs.concat(this.generateUnionType(gqlType));
+                      break;
+                    }
+                    case 'OBJECT':
+                    case 'INTERFACE': {
+                      break;
                     }
 
                     default: {
