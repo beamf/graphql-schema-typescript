@@ -4,7 +4,8 @@ import {
     getFieldRef,
     gqlScalarToTS,
     createFieldRef,
-    toUppercaseFirst
+    toUppercaseFirst,
+    descriptionToJSDoc
 } from './utils';
 import {
     IntrospectionScalarType,
@@ -12,7 +13,7 @@ import {
     IntrospectionInterfaceType,
     IntrospectionUnionType
 } from 'graphql';
-import { IntrospectionQuery } from 'graphql/utilities/introspectionQuery';
+import { IntrospectionQuery, IntrospectionField } from 'graphql/utilities/introspectionQuery';
 
 export interface GenerateResolversResult {
     importHeader: string[];
@@ -48,11 +49,6 @@ export class TSResolverGenerator {
         }
 
         this.resolverObject = [
-            '/**',
-            ' * This interface define the shape of your resolver',
-            ' * Note that this type is designed to be compatible with graphql-tools resolvers',
-            ' * However, you can still use other generated interfaces to make your resolver type-safed',
-            ' */',
 `
 // TODO: Make this handle Nullability
 // export type Result<T> = T | Promise<T>
@@ -62,7 +58,13 @@ export type Result<T> = T | null | Promise<T | null>
 export type GQLField<P, Args, Ctx, T> =
  | Result<T>
  | ((parent: P, args: Args, context: Ctx, info: GraphQLResolveInfo) => Result<T>)
+
 `,
+            '/**',
+            ' * This interface define the shape of your resolver',
+            ' * Note that this type is designed to be compatible with graphql-tools resolvers',
+            ' * However, you can still use other generated interfaces to make your resolver type-safed',
+            ' */',
             `export interface AllResolvers {`
         ];
 
@@ -127,63 +129,23 @@ export type GQLField<P, Args, Ctx, T> =
         const fieldResolversTypeDefs: string[] = [];
 
         objectType.fields.forEach(field => {
-            // generate args type
-            let argsType = '{}';
+            const res = this.generateObjectFieldResolver(objectType, field);
+            typeResolverBody.push(...res.typeResolverBody);
+            fieldResolversTypeDefs.push(...res.fieldResolversTypeDefs);
 
-            let uppercaseFisrtFieldName = toUppercaseFirst(field.name);
-
-            if (field.args.length > 0) {
-                argsType = `${objectType.name}_${uppercaseFisrtFieldName}_Args`;
-                const argsBody: string[] = [];
-                field.args.forEach(arg => {
-                    const argRefField = getFieldRef(arg);
-
-                    let argRefName = argRefField.refName;
-
-                    if (argRefField.refKind === 'SCALAR') {
-                        argRefName = gqlScalarToTS(argRefName, this.options.typePrefix);
-                    } else if (!isBuiltinType({ name: argRefName, kind: argRefField.refKind })) {
-                        argRefName = this.options.typePrefix + argRefName;
-                    }
-
-                    const argFieldNameAndType = createFieldRef(arg.name, argRefName, argRefField.fieldModifier);
-                    argsBody.push(argFieldNameAndType);
-                });
-
-                fieldResolversTypeDefs.push([
-                    `export interface ${argsType} {`,
-                    argsBody.join(', '),
-                    '}'
-                ].join(' '));
-                // argsType = [
-                //   `{ `,
-                //   ...argsBody,
-                //   ' }'
-                // ].join('');
-            }
-
-            // generate field type
-            const fieldResolverName = `${objectType.name}_${uppercaseFisrtFieldName}_Field`;
-
-            console.log('field', field)
-            const typeName = `${field.type['name']}`
-
-            fieldResolversTypeDefs.push(...[
-                `export type ${fieldResolverName}<P> = GQLField<P, ${argsType}, ${this.contextType}, ${typeName}>`
-            ]);
-
-            typeResolverBody.push(...[
-                `${field.name}?: ${fieldResolverName}<P>`
-            ]);
         });
 
+        const objectJsDoc = descriptionToJSDoc(objectType);
+        
         this.resolverInterfaces.push(...[
           '',
-          `// --- ${typeResolverName}`,
+          `// MARK: --- ${typeResolverName}`,
           '',
+          ...objectJsDoc,
             `export interface ${typeResolverName}<P = any> {`,
             ...typeResolverBody,
             '}',
+            '',
             '',
             ...fieldResolversTypeDefs
         ]);
@@ -192,5 +154,68 @@ export type GQLField<P, Args, Ctx, T> =
         this.resolverObject.push(...[
             `${objectType.name}?: ${typeResolverName};`
         ]);
+    }
+
+    private generateObjectFieldResolver(objectType: IntrospectionObjectType, field: IntrospectionField) {
+      const typeResolverBody: string[] = [];
+      const fieldResolversTypeDefs: string[] = [];
+
+      // generate args type
+      let argsType = '{}';
+
+      let uppercaseFisrtFieldName = toUppercaseFirst(field.name);
+
+      if (field.args.length > 0) {
+          argsType = `${objectType.name}_${uppercaseFisrtFieldName}_Args`;
+          const argsBody: string[] = [];
+          field.args.forEach(arg => {
+              const argRefField = getFieldRef(arg);
+
+              let argRefName = argRefField.refName;
+
+              if (argRefField.refKind === 'SCALAR') {
+                  argRefName = gqlScalarToTS(argRefName, this.options.typePrefix);
+              } else if (!isBuiltinType({ name: argRefName, kind: argRefField.refKind })) {
+                  argRefName = this.options.typePrefix + argRefName;
+              }
+
+              const argFieldNameAndType = createFieldRef(arg.name, argRefName, argRefField.fieldModifier);
+              argsBody.push(argFieldNameAndType);
+          });
+
+          const argsTypeDefs = [
+            `export interface ${argsType} {`,
+            argsBody.join(', '),
+            '}'
+        ].join(' ');
+
+          fieldResolversTypeDefs.push('', argsTypeDefs);
+          // argsType = [
+          //   `{ `,
+          //   ...argsBody,
+          //   ' }'
+          // ].join('');
+      }
+
+
+      // generate field type
+      const fieldResolverName = `${objectType.name}_${uppercaseFisrtFieldName}_Field`;
+
+      console.log('field', field)
+      const typeName = `${field.type['name']}`
+
+      const fieldJsDocs = descriptionToJSDoc(field);
+
+      fieldResolversTypeDefs.push(
+        ...[
+          ...fieldJsDocs,
+          `export type ${fieldResolverName}<P> = GQLField<P, ${argsType}, ${this.contextType}, ${typeName}>`
+      ]);
+
+      typeResolverBody.push(...[
+          `${field.name}?: ${fieldResolverName}<P>`
+      ]);
+
+      return { typeResolverBody, fieldResolversTypeDefs };
     }
 }
