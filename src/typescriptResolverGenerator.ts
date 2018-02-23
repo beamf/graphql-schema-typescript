@@ -59,6 +59,8 @@ export type GQLField<P, Args, Ctx, T> =
  | Result<T>
  | ((parent: P, args: Args, context: Ctx, info: GraphQLResolveInfo) => Result<T>)
 
+export type GQLTypeResolver<P, Ctx, T> = 
+  (parent: P, context: Ctx, info: GraphQLResolveInfo) => T
 `,
             '/**',
             ' * This interface define the shape of your resolver',
@@ -107,12 +109,16 @@ export type GQLField<P, Args, Ctx, T> =
 
     private generateTypeResolver(type: IntrospectionUnionType | IntrospectionInterfaceType) {
         const possbileTypes = type.possibleTypes.map(pt => `'${pt.name}'`);
-        const interfaceName = `${this.options.typePrefix}${type.name}Interface`;
+        const interfaceName = `${this.options.typePrefix}${type.name}_TypeResolver`;
 
         this.resolverInterfaces.push(...[
-            `export interface ${interfaceName}<P = any> {`,
-            `(parent: P, context: ${this.contextType}, info: GraphQLResolveInfo): ${possbileTypes.join(' | ')};`,
-            '}'
+          '',
+          `// MARK: --- ${interfaceName}`,
+          '',
+          `export type ${interfaceName}<P = any> = GQLTypeResolver<P, ${this.contextType}, ${possbileTypes.join(' | ')}>`,
+            // `export interface ${interfaceName}<P = any> {`,
+            // `(parent: P, context: ${this.contextType}, info: GraphQLResolveInfo): ${possbileTypes.join(' | ')};`,
+            // '}'
         ]);
 
         this.resolverObject.push(...[
