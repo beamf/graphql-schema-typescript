@@ -33,6 +33,11 @@ export class SimpleTypesGenerator {
       let typeScriptDefs: string[] = [].concat(jsDoc)
 
       switch (gqlType.kind) {
+        case 'OBJECT':
+        case 'INTERFACE': {
+          // These will be handled by resolver-types-generator
+          return prevTypescriptDefs
+        }
         case 'SCALAR': {
           typeScriptDefs = typeScriptDefs.concat(
             this.generateCustomScalarType(gqlType),
@@ -56,10 +61,6 @@ export class SimpleTypesGenerator {
           typeScriptDefs = typeScriptDefs.concat(
             this.generateUnionType(gqlType),
           )
-          break
-        }
-        case 'OBJECT':
-        case 'INTERFACE': {
           break
         }
 
@@ -128,10 +129,6 @@ export class SimpleTypesGenerator {
             ...enumValueJsDoc,
             `${enumValue.name} = '${enumValue.name}'`,
           ]
-        }
-
-        if (enumValueJsDoc.length > 0) {
-          typescriptDefs = ['', ...typescriptDefs]
         }
 
         return prevTypescriptDefs.concat(typescriptDefs)
