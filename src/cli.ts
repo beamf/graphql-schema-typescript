@@ -30,7 +30,14 @@ yargs
         const { folderPath, output } = argv;
 
         await generateTypeScriptTypes(folderPath, path.resolve(output), {
-          typePrefix: ''
+          typePrefix: '',
+          customScalarType: {
+            Json: 'any',
+          },
+          resolver: {
+            contextType: 'GQLContext',
+            importContext: 'type GQLContext = any;',
+          }
         });
         console.log(`Typescript generated at: ${output}`);
     }
