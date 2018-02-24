@@ -225,6 +225,37 @@ export function createFieldRef(
   }
 }
 
+/**
+ * Create a union type e.g: type Color = 'Red' | 'Green' | 'Blue' | ...
+ * Also, if the type is too long to fit in one line, split them info multiple lines
+ * => type Color = 'Red'
+ *      | 'Green'
+ *      | 'Blue'
+ *      | ...
+ */
+export function createTsUnionType(
+  typeName: string,
+  possibleTypes: string[],
+  typePrefix: string,
+): string[] {
+  let result = `export type ${typePrefix}${typeName} = ${possibleTypes.join(
+    ' | ',
+  )};`
+  if (result.length <= 80) {
+    return [result]
+  }
+
+  let [firstLine, rest] = result.split('=')
+
+  return [
+    firstLine + '=',
+    ...rest
+      .replace(/ \| /g, ' |\n')
+      .split('\n')
+      .map(line => line.trim()),
+  ]
+}
+
 export function gqlScalarToTS(scalarName: string, typePrefix: string): string {
   switch (scalarName) {
     case 'Int':

@@ -13,6 +13,7 @@ import {
   getTypeRef,
   isBuiltinType,
   isStringEnumSupported,
+  createTsUnionType,
 } from './utils'
 
 /**
@@ -93,18 +94,20 @@ export class SimpleTypesGenerator {
   private generateEnumType(enumType: IntrospectionEnumType): string[] {
     // if using old typescript, which doesn't support string enum: convert enum to string union
     if (!isStringEnumSupported()) {
-      return this.createTsUnionType(
+      return createTsUnionType(
         enumType.name,
         enumType.enumValues.map(v => `'${v.name}'`),
+        this.options.typePrefix,
       )
     }
 
     // if generate as global, don't generate string enum as it requires import
     if (this.options.global) {
       return [
-        ...this.createTsUnionType(
+        ...createTsUnionType(
           enumType.name,
           enumType.enumValues.map(v => `'${v.name}'`),
+          this.options.typePrefix,
         ),
         `// NOTE: enum ${
           enumType.name
@@ -182,9 +185,10 @@ export class SimpleTypesGenerator {
     const possibleTypesNames = [
       '',
       `/** Use this to resolve union type ${unionType.name} */`,
-      ...this.createTsUnionType(
+      ...createTsUnionType(
         `Possible${unionType.name}TypeNames`,
         unionType.possibleTypes.map(pt => `'${pt.name}'`),
+        this.options.typePrefix,
       ),
     ]
     const possibleTypeNamesMap = [
@@ -197,7 +201,7 @@ export class SimpleTypesGenerator {
       '}',
     ]
 
-    const unionTypeTSDefs = this.createTsUnionType(
+    const unionTypeTSDefs = createTsUnionType(
       unionType.name,
       unionType.possibleTypes.map(type => {
         if (isBuiltinType(type)) {
@@ -206,38 +210,9 @@ export class SimpleTypesGenerator {
           return typePrefix + type.name
         }
       }),
+      this.options.typePrefix,
     )
 
     return [...unionTypeTSDefs, ...possibleTypesNames, ...possibleTypeNamesMap]
-  }
-
-  /**
-   * Create a union type e.g: type Color = 'Red' | 'Green' | 'Blue' | ...
-   * Also, if the type is too long to fit in one line, split them info multiple lines
-   * => type Color = 'Red'
-   *      | 'Green'
-   *      | 'Blue'
-   *      | ...
-   */
-  private createTsUnionType(
-    typeName: string,
-    possibleTypes: string[],
-  ): string[] {
-    let result = `export type ${
-      this.options.typePrefix
-    }${typeName} = ${possibleTypes.join(' | ')};`
-    if (result.length <= 80) {
-      return [result]
-    }
-
-    let [firstLine, rest] = result.split('=')
-
-    return [
-      firstLine + '=',
-      ...rest
-        .replace(/ \| /g, ' |\n')
-        .split('\n')
-        .map(line => line.trim()),
-    ]
   }
 }

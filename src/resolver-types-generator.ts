@@ -6,20 +6,17 @@ import {
 } from 'graphql'
 import {
   IntrospectionField,
-  IntrospectionListTypeRef,
-  IntrospectionNamedTypeRef,
-  IntrospectionNonNullTypeRef,
   IntrospectionQuery,
-  IntrospectionTypeRef,
+  IntrospectionType,
 } from 'graphql/utilities/introspectionQuery'
 
 import { GenerateTypescriptOptions } from './options'
 import {
   createFieldRef,
+  createTsUnionType,
   descriptionToJSDoc,
   getModifiedTsTypeName,
   getTypeRef,
-  gqlScalarToTS,
   isBuiltinType,
   toUppercaseFirst,
 } from './utils'
@@ -88,9 +85,13 @@ export class ResolverTypesGenerator {
           return this.generateCustomScalarResolver(type)
 
         case 'OBJECT':
-          return this.generateObjectResolver(type)
+          return this.generateObjectResolver(type, gqlTypes)
 
         case 'INTERFACE':
+          this.generateObjectResolver(type, gqlTypes)
+          return this.generateResolveTypeResolver(type)
+        // TODO: Right now GraphQL implements interface info is lost in typescript
+        // Should add typescript interface and add the relationship back in
         case 'UNION':
           return this.generateResolveTypeResolver(type)
       }
@@ -142,18 +143,75 @@ export class ResolverTypesGenerator {
   /**
    * e.g. type User { id: string }
    */
-  private generateObjectResolver(objectType: IntrospectionObjectType) {
-    const typeResolverName = `${this.options.typePrefix}${objectType.name}`
+  private generateObjectResolver(
+    gqlType: IntrospectionObjectType | IntrospectionInterfaceType,
+    allGQLTypes: IntrospectionType[],
+  ) {
+    const extendTypes: string[] =
+      gqlType.kind === 'OBJECT' ? gqlType.interfaces.map(i => i.name) : []
+
+    const extendGqlTypes = allGQLTypes.filter(
+      t => extendTypes.indexOf(t.name) !== -1,
+    ) as IntrospectionInterfaceType[]
+    const extendFields = extendGqlTypes.reduce<string[]>(
+      (prevFieldNames, gqlType) => {
+        return prevFieldNames.concat(gqlType.fields.map(f => f.name))
+      },
+      [],
+    )
+
+    const typeResolverName = `${this.options.typePrefix}${gqlType.name}`
     const typeResolverBody: string[] = []
     const fieldResolversTypeDefs: string[] = []
 
-    objectType.fields.forEach(field => {
-      const res = this.generateObjectFieldResolver(objectType, field)
+    gqlType.fields.forEach(field => {
+      if (
+        extendFields.indexOf(field.name) !== -1 &&
+        this.options.minimizeInterfaceImplementation
+      ) {
+        return
+      }
+      const res = this.generateObjectFieldResolver(gqlType, field)
       typeResolverBody.push(...res.typeResolverBody)
       fieldResolversTypeDefs.push(...res.fieldResolversTypeDefs)
     })
 
-    const objectJsDoc = descriptionToJSDoc(objectType)
+    const objectJsDoc = descriptionToJSDoc(gqlType)
+
+    const possibleTypeNames: string[] = []
+    const possibleTypeNamesMap: string[] = []
+    if (gqlType.kind === 'INTERFACE') {
+      possibleTypeNames.push(
+        ...[
+          '',
+          `/** Use this to resolve interface type ${gqlType.name} */`,
+          ...createTsUnionType(
+            `Possible${gqlType.name}TypeNames`,
+            gqlType.possibleTypes.map(pt => `'${pt.name}'`),
+            this.options.typePrefix,
+          ),
+        ],
+      )
+
+      possibleTypeNamesMap.push(
+        ...[
+          '',
+          `export interface ${this.options.typePrefix}${gqlType.name}NameMap {`,
+          `${gqlType.name}: ${this.options.typePrefix}${gqlType.name};`,
+          ...gqlType.possibleTypes.map(pt => {
+            return `${pt.name}: ${this.options.typePrefix}${pt.name};`
+          }),
+          '}',
+        ],
+      )
+    }
+
+    const extendStr =
+      extendTypes.length === 0
+        ? ''
+        : `extends ${extendTypes
+            .map(t => this.options.typePrefix + t)
+            .join(', ')} `
 
     this.resolverInterfaces.push(
       ...[
@@ -161,23 +219,27 @@ export class ResolverTypesGenerator {
         `// MARK: --- ${typeResolverName}`,
         '',
         ...objectJsDoc,
-        `export interface ${typeResolverName}<P = any> {`,
+        `export interface ${typeResolverName}<P = any> ${extendStr}{`,
         ...typeResolverBody,
         '}',
         '',
         '',
         ...fieldResolversTypeDefs,
+        ...possibleTypeNames,
+        ...possibleTypeNamesMap,
       ],
     )
 
     // add the type resolver to resolver object
-    this.allResolversInterface.push(
-      ...[`${objectType.name}?: ${typeResolverName};`],
-    )
+    if (gqlType.kind === 'OBJECT') {
+      this.allResolversInterface.push(
+        ...[`${gqlType.name}?: ${typeResolverName};`],
+      )
+    }
   }
 
   private generateObjectFieldResolver(
-    objectType: IntrospectionObjectType,
+    objectType: IntrospectionObjectType | IntrospectionInterfaceType,
     field: IntrospectionField,
   ) {
     const typeResolverBody: string[] = []
