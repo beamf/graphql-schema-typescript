@@ -108,60 +108,87 @@ export function descriptionToJSDoc(description: GraphqlDescription): string[] {
   return ['/**', ...lines, ' */']
 }
 
-export interface FieldType {
-  fieldModifier: string
-  refName: string
-  refKind: string
+/** Reference to a specific type in GraphQL, possibly modified */
+export interface TypeRef {
+  modifier: string
+  name: string
+  kind: string
 }
-export function getFieldRef(
+export function getTypeRef(
   field: IntrospectionField | IntrospectionInputValue,
-): FieldType {
-  let fieldModifier: string[] = []
+): TypeRef {
+  let modifier: string[] = []
 
   let typeRef = field.type
 
   while (typeRef.kind === 'NON_NULL' || typeRef.kind === 'LIST') {
-    fieldModifier.push(typeRef.kind)
+    modifier.push(typeRef.kind)
     typeRef = (typeRef as IntrospectionListTypeRef).ofType!
   }
 
   return {
-    fieldModifier: fieldModifier.join(' '),
-    refKind: (typeRef as IntrospectionNamedTypeRef).kind,
-    refName: (typeRef as IntrospectionNamedTypeRef).name,
+    modifier: modifier.join(' '),
+    kind: (typeRef as IntrospectionNamedTypeRef).kind,
+    name: (typeRef as IntrospectionNamedTypeRef).name,
   }
 }
 
-export function formatTabSpace(lines: string[], tabSpaces: number): string[] {
-  let result: string[] = []
-
-  let indent = 0
-  for (let line of lines) {
-    const trimmed = line.trim()
-
-    if (trimmed.endsWith('}') || trimmed.endsWith('};')) {
-      indent -= tabSpaces
-      if (indent < 0) {
-        indent = 0
-      }
-    }
-
-    result.push(' '.repeat(indent) + line)
-
-    if (trimmed.endsWith('{')) {
-      indent += tabSpaces
-    }
+/** Get the typescript name given GraphQL name */
+export function getTsName(
+  gqlName: string,
+  kind: string,
+  typePrefix: string,
+): string {
+  if (kind === 'SCALAR') {
+    return gqlScalarToTS(gqlName, typePrefix)
   }
+  return `${typePrefix}${gqlName}`
+}
 
-  return result
+export function getModifiedTsName(ref: TypeRef, typePrefix: string) {
+  const refName = getTsName(ref.name, ref.kind, typePrefix)
+
+  switch (ref.modifier) {
+    case '': // User
+      return `${refName} | null`
+
+    case 'NON_NULL': // User!
+      return `${refName}`
+
+    case 'LIST': // [User]
+      return `(${refName} | null)[] | null`
+
+    case 'LIST NON_NULL': // [User!]
+      return `${refName}[] | null`
+
+    case 'NON_NULL LIST': // [User]!
+      return `(${refName} | null)[]`
+
+    case 'NON_NULL LIST NON_NULL': // [User!]!
+      return `${refName}[]`
+
+    case 'LIST NON_NULL LIST NON_NULL':
+      throw new Error('Theretically impossible type?') // return `(${refName} | null)[][]`
+
+    case 'NON_NULL LIST NON_NULL LIST NON_NULL':
+      throw new Error('Theretically impossible type?') // return `${refName}[][]`
+
+    // TODO: make it to handle any generic case
+    default:
+      throw new Error(
+        `We are reaching the fieldModifier level that should not exists: ${
+          ref.modifier
+        }`,
+      )
+  }
 }
 
 export function createFieldRef(
   fieldName: string,
   refName: string,
-  fieldModifier: string,
+  refModifier: string,
 ): string {
-  switch (fieldModifier) {
+  switch (refModifier) {
     case '': {
       return `${fieldName}?: ${refName}`
     }
@@ -198,7 +225,7 @@ export function createFieldRef(
 
     default: {
       throw new Error(
-        `We are reaching the fieldModifier level that should not exists: ${fieldModifier}`,
+        `We are reaching the fieldModifier level that should not exists: ${refModifier}`,
       )
     }
   }
@@ -224,4 +251,28 @@ export function gqlScalarToTS(scalarName: string, typePrefix: string): string {
 
 export const toUppercaseFirst = (value: string): string => {
   return value.charAt(0).toUpperCase() + value.slice(1)
+}
+
+export function formatTabSpace(lines: string[], tabSpaces: number): string[] {
+  let result: string[] = []
+
+  let indent = 0
+  for (let line of lines) {
+    const trimmed = line.trim()
+
+    if (trimmed.endsWith('}') || trimmed.endsWith('};')) {
+      indent -= tabSpaces
+      if (indent < 0) {
+        indent = 0
+      }
+    }
+
+    result.push(' '.repeat(indent) + line)
+
+    if (trimmed.endsWith('{')) {
+      indent += tabSpaces
+    }
+  }
+
+  return result
 }

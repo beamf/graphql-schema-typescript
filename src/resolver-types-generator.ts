@@ -17,10 +17,11 @@ import { GenerateTypescriptOptions } from './options'
 import {
   createFieldRef,
   descriptionToJSDoc,
-  getFieldRef,
+  getTypeRef,
   gqlScalarToTS,
   isBuiltinType,
   toUppercaseFirst,
+  getModifiedTsName,
 } from './utils'
 
 export interface GenerateResolversResult {
@@ -180,14 +181,14 @@ export class ResolverTypesGenerator {
       argsType = `${objectType.name}_${uppercaseFisrtFieldName}_Args`
       const argsBody: string[] = []
       field.args.forEach(arg => {
-        const argRefField = getFieldRef(arg)
+        const argRefField = getTypeRef(arg)
 
-        let argRefName = argRefField.refName
+        let argRefName = argRefField.name
 
-        if (argRefField.refKind === 'SCALAR') {
+        if (argRefField.kind === 'SCALAR') {
           argRefName = gqlScalarToTS(argRefName, this.options.typePrefix)
         } else if (
-          !isBuiltinType({ name: argRefName, kind: argRefField.refKind })
+          !isBuiltinType({ name: argRefName, kind: argRefField.kind })
         ) {
           argRefName = this.options.typePrefix + argRefName
         }
@@ -195,8 +196,9 @@ export class ResolverTypesGenerator {
         const argFieldNameAndType = createFieldRef(
           arg.name,
           argRefName,
-          argRefField.fieldModifier,
+          argRefField.modifier,
         )
+        console.log(argFieldNameAndType)
         argsBody.push(argFieldNameAndType)
       })
 
@@ -214,7 +216,8 @@ export class ResolverTypesGenerator {
       objectType.name
     }_${uppercaseFisrtFieldName}_Field`
 
-    const typeName = this.getTsType(field.type)
+    // const typeName = this.getTsType(field.type)
+    const typeName = this.getTsType2(field)
 
     const fieldJsDocs = descriptionToJSDoc(field)
 
@@ -245,7 +248,13 @@ export class ResolverTypesGenerator {
     } else if (type.kind === 'NON_NULL') {
       return this.getTsType((type as IntrospectionNonNullTypeRef).ofType)
     } else {
-      return `${this.getTsTypeName(type as IntrospectionNamedTypeRef)} | null`
+      return `${this.getTsTypeName(type as IntrospectionNamedTypeRef)}`
     }
+  }
+
+  private getTsType2(field: IntrospectionField) {
+    const ref = getTypeRef(field)
+
+    return getModifiedTsName(ref, this.options.typePrefix)
   }
 }

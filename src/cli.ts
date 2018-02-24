@@ -34,7 +34,7 @@ yargs
       const { folderPath, output } = argv
 
       await generateTypeScriptTypes(folderPath, path.resolve(output), {
-        typePrefix: '',
+        typePrefix: 'BF',
         customScalarType: {
           Json: 'any',
         },

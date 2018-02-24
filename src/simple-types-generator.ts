@@ -11,7 +11,7 @@ import { GenerateTypescriptOptions } from './options'
 import {
   createFieldRef,
   descriptionToJSDoc,
-  getFieldRef,
+  getTypeRef,
   gqlScalarToTS,
   isBuiltinType,
 } from './utils'
@@ -161,19 +161,15 @@ export class SimpleTypesGenerator {
       (prevTypescriptDefs, field, index) => {
         let fieldJsDoc = descriptionToJSDoc(field)
 
-        let { refKind, refName, fieldModifier } = getFieldRef(field)
+        let { kind, name, modifier } = getTypeRef(field)
 
-        if (refKind === 'SCALAR') {
-          refName = gqlScalarToTS(refName, this.options.typePrefix)
+        if (kind === 'SCALAR') {
+          name = gqlScalarToTS(name, this.options.typePrefix)
         } else {
-          refName = `${this.options.typePrefix}${refName}`
+          name = `${this.options.typePrefix}${name}`
         }
 
-        const fieldNameAndType = createFieldRef(
-          field.name,
-          refName,
-          fieldModifier,
-        )
+        const fieldNameAndType = createFieldRef(field.name, name, modifier)
         let typescriptDefs = [...fieldJsDoc, fieldNameAndType]
 
         if (fieldJsDoc.length > 0) {
