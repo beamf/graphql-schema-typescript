@@ -1,19 +1,20 @@
-import { GenerateTypescriptOptions } from './types';
 import {
-    isBuiltinType,
-    getFieldRef,
-    gqlScalarToTS,
-    createFieldRef,
-    toUppercaseFirst,
-    descriptionToJSDoc
-} from './utils';
-import {
-    IntrospectionScalarType,
-    IntrospectionObjectType,
-    IntrospectionInterfaceType,
-    IntrospectionUnionType
+  IntrospectionInterfaceType,
+  IntrospectionObjectType,
+  IntrospectionScalarType,
+  IntrospectionUnionType,
 } from 'graphql';
-import { IntrospectionQuery, IntrospectionField } from 'graphql/utilities/introspectionQuery';
+import {
+  IntrospectionField,
+  IntrospectionListTypeRef,
+  IntrospectionNamedTypeRef,
+  IntrospectionNonNullTypeRef,
+  IntrospectionQuery,
+  IntrospectionTypeRef,
+} from 'graphql/utilities/introspectionQuery';
+
+import { GenerateTypescriptOptions } from './types';
+import { createFieldRef, descriptionToJSDoc, getFieldRef, gqlScalarToTS, isBuiltinType, toUppercaseFirst } from './utils';
 
 export interface GenerateResolversResult {
     importHeader: string[];
@@ -207,8 +208,11 @@ export type GQLTypeResolver<P, Ctx, T> =
       // generate field type
       const fieldResolverName = `${objectType.name}_${uppercaseFisrtFieldName}_Field`;
 
-      console.log('field', field)
-      const typeName = `${field.type['name']}`
+      console.log('kind', field.type);
+      // switch (field.type.kind) {
+      // }
+      
+      const typeName = this.getTsType(field.type);
 
       const fieldJsDocs = descriptionToJSDoc(field);
 
@@ -223,5 +227,22 @@ export type GQLTypeResolver<P, Ctx, T> =
       ]);
 
       return { typeResolverBody, fieldResolversTypeDefs };
+    }
+
+    private getTsTypeName(type: IntrospectionNamedTypeRef): string {
+      if (type.kind === 'SCALAR') {
+        return gqlScalarToTS(type.name, this.options.typePrefix);
+      }
+      return `${this.options.typePrefix}${type.name}`;
+    }
+
+    private getTsType(type: IntrospectionTypeRef) {
+      if (type.kind === 'LIST') {
+        return `${this.getTsType((type as IntrospectionListTypeRef).ofType)}[]`;
+      } else if (type.kind === 'NON_NULL') {
+        return this.getTsType((type as IntrospectionNonNullTypeRef).ofType);
+      } else {
+        return `${this.getTsTypeName(type as IntrospectionNamedTypeRef)} | null`;
+      }
     }
 }
