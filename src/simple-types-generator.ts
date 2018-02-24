@@ -5,15 +5,14 @@ import {
   IntrospectionScalarType,
   IntrospectionUnionType,
 } from 'graphql'
-import { versionMajorMinor as TSVersion } from 'typescript'
 
 import { GenerateTypescriptOptions } from './options'
 import {
   createFieldRef,
   descriptionToJSDoc,
   getTypeRef,
-  gqlScalarToTS,
   isBuiltinType,
+  isStringEnumSupported,
 } from './utils'
 
 /**
@@ -90,15 +89,10 @@ export class SimpleTypesGenerator {
     return [`export type ${this.options.typePrefix}${scalarType.name} = any;`]
   }
 
-  private isStringEnumSupported(): boolean {
-    const [major, minor] = TSVersion.split('.').map(v => +v)
-    return (major === 2 && minor >= 5) || major > 2
-  }
-
   private generateEnumType(enumType: IntrospectionEnumType): string[] {
     // if using old typescript, which doesn't support string enum: convert enum to string union
-    if (!this.isStringEnumSupported()) {
-      return this.createUnionType(
+    if (!isStringEnumSupported()) {
+      return this.createTsUnionType(
         enumType.name,
         enumType.enumValues.map(v => `'${v.name}'`),
       )
@@ -107,7 +101,7 @@ export class SimpleTypesGenerator {
     // if generate as global, don't generate string enum as it requires import
     if (this.options.global) {
       return [
-        ...this.createUnionType(
+        ...this.createTsUnionType(
           enumType.name,
           enumType.enumValues.map(v => `'${v.name}'`),
         ),
@@ -161,15 +155,13 @@ export class SimpleTypesGenerator {
       (prevTypescriptDefs, field, index) => {
         let fieldJsDoc = descriptionToJSDoc(field)
 
-        let { kind, name, modifier } = getTypeRef(field)
+        const typeRef = getTypeRef(field)
 
-        if (kind === 'SCALAR') {
-          name = gqlScalarToTS(name, this.options.typePrefix)
-        } else {
-          name = `${this.options.typePrefix}${name}`
-        }
-
-        const fieldNameAndType = createFieldRef(field.name, name, modifier)
+        const fieldNameAndType = createFieldRef(
+          field.name,
+          typeRef,
+          this.options.typePrefix,
+        )
         let typescriptDefs = [...fieldJsDoc, fieldNameAndType]
 
         if (fieldJsDoc.length > 0) {
@@ -181,14 +173,10 @@ export class SimpleTypesGenerator {
       [],
     )
 
-    const possibleTypeNames: string[] = []
-    const possibleTypeNamesMap: string[] = []
     return [
       `export interface ${this.options.typePrefix}${objectType.name} {`,
       ...objectFields,
       '}',
-      ...possibleTypeNames,
-      ...possibleTypeNamesMap,
     ]
   }
 
@@ -197,7 +185,7 @@ export class SimpleTypesGenerator {
     const possibleTypesNames = [
       '',
       `/** Use this to resolve union type ${unionType.name} */`,
-      ...this.createUnionType(
+      ...this.createTsUnionType(
         `Possible${unionType.name}TypeNames`,
         unionType.possibleTypes.map(pt => `'${pt.name}'`),
       ),
@@ -212,7 +200,7 @@ export class SimpleTypesGenerator {
       '}',
     ]
 
-    const unionTypeTSDefs = this.createUnionType(
+    const unionTypeTSDefs = this.createTsUnionType(
       unionType.name,
       unionType.possibleTypes.map(type => {
         if (isBuiltinType(type)) {
@@ -234,7 +222,10 @@ export class SimpleTypesGenerator {
    *      | 'Blue'
    *      | ...
    */
-  private createUnionType(typeName: string, possibleTypes: string[]): string[] {
+  private createTsUnionType(
+    typeName: string,
+    possibleTypes: string[],
+  ): string[] {
     let result = `export type ${
       this.options.typePrefix
     }${typeName} = ${possibleTypes.join(' | ')};`

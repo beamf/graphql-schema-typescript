@@ -17,11 +17,11 @@ import { GenerateTypescriptOptions } from './options'
 import {
   createFieldRef,
   descriptionToJSDoc,
+  getModifiedTsTypeName,
   getTypeRef,
   gqlScalarToTS,
   isBuiltinType,
   toUppercaseFirst,
-  getModifiedTsName,
 } from './utils'
 
 export interface GenerateResolversResult {
@@ -34,8 +34,8 @@ export interface GenerateResolversResult {
  */
 export class ResolverTypesGenerator {
   protected importHeader: string[] = []
+  protected allResolversInterface: string[] = []
   protected resolverInterfaces: string[] = []
-  protected resolverObject: string[] = []
   protected contextType: string
 
   constructor(protected options: GenerateTypescriptOptions) {
@@ -65,10 +65,7 @@ export class ResolverTypesGenerator {
       this.importHeader.push(`import { GraphQLResolveInfo } from 'graphql';`)
     }
 
-    this.resolverObject = [
-      '// TODO: Make this handle Nullability',
-      '// export type Result<T> = T | Promise<T>',
-      '// export type NullableResult<T> = T | null | Promise<T | null>',
+    this.allResolversInterface = [
       '',
       'export type Result<T> = T | null | Promise<T | null>',
       'export type GQLField<T, P, Args, Ctx> =',
@@ -95,44 +92,56 @@ export class ResolverTypesGenerator {
 
         case 'INTERFACE':
         case 'UNION':
-          return this.generateTypeResolver(type)
+          return this.generateResolveTypeResolver(type)
       }
     })
 
-    this.resolverObject.push('}')
+    this.allResolversInterface.push('}')
 
     return {
       importHeader: this.importHeader,
-      body: [...this.resolverObject, ...this.resolverInterfaces],
+      body: [...this.allResolversInterface, ...this.resolverInterfaces],
     }
   }
 
+  /**
+   * e.g. Json
+   */
   private generateCustomScalarResolver(scalarType: IntrospectionScalarType) {
-    this.resolverObject.push(`${scalarType.name}?: GraphQLScalarType;`)
+    this.allResolversInterface.push(`${scalarType.name}?: GraphQLScalarType;`)
   }
 
-  private generateTypeResolver(
+  /**
+   * Resolving union / interface `__resolveType` function def.
+   * e.g. union Searchable = Movie | User
+   */
+  private generateResolveTypeResolver(
     type: IntrospectionUnionType | IntrospectionInterfaceType,
   ) {
     const possbileTypes = type.possibleTypes.map(pt => `'${pt.name}'`)
-    const interfaceName = `${this.options.typePrefix}${type.name}_TypeResolver`
+    const typeResolverName = `${this.options.typePrefix}${
+      type.name
+    }_TypeResolver`
 
     this.resolverInterfaces.push(
       ...[
         '',
-        `// MARK: resolverInterfacesresolverInterfaces--- ${interfaceName}`,
+        `// MARK: --- ${typeResolverName}`,
         '',
-        `export type ${interfaceName}<P = any> = GQLTypeResolver<P, ${
+        `export type ${typeResolverName}<P = any> = GQLTypeResolver<P, ${
           this.contextType
         }, ${possbileTypes.join(' | ')}>`,
       ],
     )
 
-    this.resolverObject.push(
-      ...[`${type.name}?: {`, `__resolveType: ${interfaceName}`, '};', ''],
+    this.allResolversInterface.push(
+      `${type.name}?: {  __resolveType: ${typeResolverName} }`,
     )
   }
 
+  /**
+   * e.g. type User { id: string }
+   */
   private generateObjectResolver(objectType: IntrospectionObjectType) {
     const typeResolverName = `${this.options.typePrefix}${objectType.name}`
     const typeResolverBody: string[] = []
@@ -162,7 +171,9 @@ export class ResolverTypesGenerator {
     )
 
     // add the type resolver to resolver object
-    this.resolverObject.push(...[`${objectType.name}?: ${typeResolverName};`])
+    this.allResolversInterface.push(
+      ...[`${objectType.name}?: ${typeResolverName};`],
+    )
   }
 
   private generateObjectFieldResolver(
@@ -179,28 +190,12 @@ export class ResolverTypesGenerator {
 
     if (field.args.length > 0) {
       argsType = `${objectType.name}_${uppercaseFisrtFieldName}_Args`
-      const argsBody: string[] = []
-      field.args.forEach(arg => {
-        const argRefField = getTypeRef(arg)
 
-        let argRefName = argRefField.name
-
-        if (argRefField.kind === 'SCALAR') {
-          argRefName = gqlScalarToTS(argRefName, this.options.typePrefix)
-        } else if (
-          !isBuiltinType({ name: argRefName, kind: argRefField.kind })
-        ) {
-          argRefName = this.options.typePrefix + argRefName
-        }
-
-        const argFieldNameAndType = createFieldRef(
-          arg.name,
-          argRefName,
-          argRefField.modifier,
+      const argsBody = field.args.reduce((body: string[], arg) => {
+        return body.concat(
+          createFieldRef(arg.name, getTypeRef(arg), this.options.typePrefix),
         )
-        console.log(argFieldNameAndType)
-        argsBody.push(argFieldNameAndType)
-      })
+      }, [])
 
       const argsTypeDefs = [
         `export interface ${argsType} {`,
@@ -216,8 +211,10 @@ export class ResolverTypesGenerator {
       objectType.name
     }_${uppercaseFisrtFieldName}_Field`
 
-    // const typeName = this.getTsType(field.type)
-    const typeName = this.getTsType2(field)
+    const typeName = getModifiedTsTypeName(
+      getTypeRef(field),
+      this.options.typePrefix,
+    )
 
     const fieldJsDocs = descriptionToJSDoc(field)
 
@@ -233,28 +230,5 @@ export class ResolverTypesGenerator {
     typeResolverBody.push(...[`${field.name}?: ${fieldResolverName}<P>`])
 
     return { typeResolverBody, fieldResolversTypeDefs }
-  }
-
-  private getTsTypeName(type: IntrospectionNamedTypeRef): string {
-    if (type.kind === 'SCALAR') {
-      return gqlScalarToTS(type.name, this.options.typePrefix)
-    }
-    return `${this.options.typePrefix}${type.name}`
-  }
-
-  private getTsType(type: IntrospectionTypeRef) {
-    if (type.kind === 'LIST') {
-      return `${this.getTsType((type as IntrospectionListTypeRef).ofType)}[]`
-    } else if (type.kind === 'NON_NULL') {
-      return this.getTsType((type as IntrospectionNonNullTypeRef).ofType)
-    } else {
-      return `${this.getTsTypeName(type as IntrospectionNamedTypeRef)}`
-    }
-  }
-
-  private getTsType2(field: IntrospectionField) {
-    const ref = getTypeRef(field)
-
-    return getModifiedTsName(ref, this.options.typePrefix)
   }
 }

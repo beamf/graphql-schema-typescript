@@ -12,6 +12,7 @@ import {
   parse,
 } from 'graphql'
 import { join } from 'path'
+import { versionMajorMinor as TSVersion } from 'typescript'
 
 /**
  * Send introspection query to a graphql schema
@@ -108,6 +109,18 @@ export function descriptionToJSDoc(description: GraphqlDescription): string[] {
   return ['/**', ...lines, ' */']
 }
 
+/** Get the typescript name given GraphQL name */
+export function getTsTypeName(
+  gqlName: string,
+  kind: string,
+  typePrefix: string,
+): string {
+  if (kind === 'SCALAR') {
+    return gqlScalarToTS(gqlName, typePrefix)
+  }
+  return `${typePrefix}${gqlName}`
+}
+
 /** Reference to a specific type in GraphQL, possibly modified */
 export interface TypeRef {
   modifier: string
@@ -133,39 +146,27 @@ export function getTypeRef(
   }
 }
 
-/** Get the typescript name given GraphQL name */
-export function getTsName(
-  gqlName: string,
-  kind: string,
-  typePrefix: string,
-): string {
-  if (kind === 'SCALAR') {
-    return gqlScalarToTS(gqlName, typePrefix)
-  }
-  return `${typePrefix}${gqlName}`
-}
-
-export function getModifiedTsName(ref: TypeRef, typePrefix: string) {
-  const refName = getTsName(ref.name, ref.kind, typePrefix)
+export function getModifiedTsTypeName(ref: TypeRef, typePrefix: string) {
+  const tsTypeName = getTsTypeName(ref.name, ref.kind, typePrefix)
 
   switch (ref.modifier) {
     case '': // User
-      return `${refName} | null`
+      return `${tsTypeName} | null`
 
     case 'NON_NULL': // User!
-      return `${refName}`
+      return `${tsTypeName}`
 
     case 'LIST': // [User]
-      return `(${refName} | null)[] | null`
+      return `(${tsTypeName} | null)[] | null`
 
     case 'LIST NON_NULL': // [User!]
-      return `${refName}[] | null`
+      return `${tsTypeName}[] | null`
 
     case 'NON_NULL LIST': // [User]!
-      return `(${refName} | null)[]`
+      return `(${tsTypeName} | null)[]`
 
     case 'NON_NULL LIST NON_NULL': // [User!]!
-      return `${refName}[]`
+      return `${tsTypeName}[]`
 
     case 'LIST NON_NULL LIST NON_NULL':
       throw new Error('Theretically impossible type?') // return `(${refName} | null)[][]`
@@ -185,49 +186,42 @@ export function getModifiedTsName(ref: TypeRef, typePrefix: string) {
 
 export function createFieldRef(
   fieldName: string,
-  refName: string,
-  refModifier: string,
+  ref: TypeRef,
+  typePrefix: string,
 ): string {
-  switch (refModifier) {
-    case '': {
-      return `${fieldName}?: ${refName}`
-    }
+  const modifiedTsTypeName = getModifiedTsTypeName(ref, typePrefix)
+  switch (ref.modifier) {
+    case '':
+      return `${fieldName}?: ${modifiedTsTypeName}`
 
-    case 'NON_NULL': {
-      return `${fieldName}: ${refName}`
-    }
+    case 'NON_NULL':
+      return `${fieldName}: ${modifiedTsTypeName}`
 
-    case 'LIST': {
-      return `${fieldName}?: (${refName} | null)[]`
-    }
+    case 'LIST':
+      return `${fieldName}?: ${modifiedTsTypeName}`
 
-    case 'LIST NON_NULL': {
-      return `${fieldName}?: ${refName}[]`
-    }
+    case 'LIST NON_NULL':
+      return `${fieldName}?: ${modifiedTsTypeName}`
 
-    case 'NON_NULL LIST': {
-      return `${fieldName}: (${refName} | null)[]`
-    }
+    case 'NON_NULL LIST':
+      return `${fieldName}: ${modifiedTsTypeName}`
 
-    case 'NON_NULL LIST NON_NULL': {
-      return `${fieldName}: ${refName}[]`
-    }
+    case 'NON_NULL LIST NON_NULL':
+      return `${fieldName}: ${modifiedTsTypeName}`
 
-    case 'LIST NON_NULL LIST NON_NULL': {
-      return `${fieldName}?: ${refName}[][]`
-    }
+    case 'LIST NON_NULL LIST NON_NULL':
+      throw new Error('Theretically impossible type?') // return `${fieldName}?: ${modifiedTsTypeName}`
 
-    case 'NON_NULL LIST NON_NULL LIST NON_NULL': {
-      return `${fieldName}: ${refName}[][]`
-    }
+    case 'NON_NULL LIST NON_NULL LIST NON_NULL':
+      throw new Error('Theretically impossible type?') // return `${fieldName}: ${modifiedTsTypeName}`
 
     // TODO: make it to handle any generic case
-
-    default: {
+    default:
       throw new Error(
-        `We are reaching the fieldModifier level that should not exists: ${refModifier}`,
+        `We are reaching the fieldModifier level that should not exists: ${
+          ref.modifier
+        }`,
       )
-    }
   }
 }
 
@@ -261,9 +255,11 @@ export function formatTabSpace(lines: string[], tabSpaces: number): string[] {
     const trimmed = line.trim()
 
     if (trimmed.endsWith('}') || trimmed.endsWith('};')) {
-      indent -= tabSpaces
-      if (indent < 0) {
-        indent = 0
+      if (!trimmed.endsWith(' }') && !trimmed.endsWith(' };')) {
+        indent -= tabSpaces
+        if (indent < 0) {
+          indent = 0
+        }
       }
     }
 
@@ -275,4 +271,9 @@ export function formatTabSpace(lines: string[], tabSpaces: number): string[] {
   }
 
   return result
+}
+
+export function isStringEnumSupported(): boolean {
+  const [major, minor] = TSVersion.split('.').map(v => +v)
+  return (major === 2 && minor >= 5) || major > 2
 }
