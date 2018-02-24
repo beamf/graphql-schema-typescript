@@ -70,7 +70,7 @@ export class ResolverTypesGenerator {
       '// export type NullableResult<T> = T | null | Promise<T | null>',
       '',
       'export type Result<T> = T | null | Promise<T | null>',
-      'export type GQLField<P, Args, Ctx, T> =',
+      'export type GQLField<T, P, Args, Ctx> =',
       ' | Result<T>',
       ' | ((parent: P, args: Args, context: Ctx, info: GraphQLResolveInfo) => Result<T>)',
       '',
@@ -221,9 +221,9 @@ export class ResolverTypesGenerator {
     fieldResolversTypeDefs.push(
       ...[
         ...fieldJsDocs,
-        `export type ${fieldResolverName}<P> = GQLField<P, ${argsType}, ${
+        `export type ${fieldResolverName}<P> = GQLField<${typeName}, P, ${argsType}, ${
           this.contextType
-        }, ${typeName}>`,
+        }>`,
       ],
     )
 
