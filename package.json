@@ -10,7 +10,7 @@
     "lint": "tslint -p tslint.json && tsc --noEmit",
     "build": "rm -rf ./lib && tsc",
     "prepare": "npm run lint && npm run test && npm run build",
-    "prettier": "prettier --write **/*.ts"
+    "prettier": "prettier --write **/*.ts *.json"
   },
   "repository": {
     "type": "git",
@@ -20,7 +20,7 @@
   "author": "Jack Dang <jack.dang@itutorworld.com.au>",
   "license": "MIT",
   "devDependencies": {
-    "@beamf/common-config": "^0.2.3",
+    "@beamf/common-config": "^0.2.4",
     "@playlyfe/gql": "2.3.2",
     "@types/fs-extra": "4.0.4",
     "@types/graphql": "0.11.5",
@@ -48,11 +48,6 @@
       ".(ts|tsx)": "<rootDir>/node_modules/ts-jest/preprocessor.js"
     },
     "testRegex": "/__tests__/.*\\.test\\.ts$",
-    "moduleFileExtensions": [
-      "ts",
-      "tsx",
-      "js",
-      "json"
-    ]
+    "moduleFileExtensions": ["ts", "tsx", "js", "json"]
   }
 }

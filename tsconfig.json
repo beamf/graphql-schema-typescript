@@ -1,19 +1,13 @@
 {
-    "include": [
-        "src/index.ts",
-        "src/cli.ts"
-    ],
-    "compilerOptions": {
-        "target": "es5",
-        "lib": [
-            "es6",
-            "esnext.asynciterable"
-        ],
-        "module": "commonjs",
-        "declaration": true,
-        "outDir": "./lib",
-        "noImplicitAny": false,
-        "forceConsistentCasingInFileNames": true,
-        "noUnusedLocals": false
-    }
+  "include": ["src/index.ts", "src/cli.ts"],
+  "compilerOptions": {
+    "target": "es5",
+    "lib": ["es6", "esnext.asynciterable"],
+    "module": "commonjs",
+    "declaration": true,
+    "outDir": "./lib",
+    "noImplicitAny": false,
+    "forceConsistentCasingInFileNames": true,
+    "noUnusedLocals": false
+  }
 }
