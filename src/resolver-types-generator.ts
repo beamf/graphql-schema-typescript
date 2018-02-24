@@ -64,20 +64,26 @@ export class ResolverTypesGenerator {
 
     this.allResolversInterface = [
       '',
-      'export type Result<T> = T | null | Promise<T | null>',
+      'export type Value<T> = T | Promise<T>',
+      '/**',
+      ' * The reason property is nullable even for non-null field is because we do not in the model',
+      ' * whether the field is or possibly implemented by the resolver (field could also be a func, see below)',
+      ' * TODO: Finish correct type def for model separate from resolver',
+      ' */',
+      'export type GQLProperty<T> = Value<T | null> | (() => Value<T>)',
+      '',
+      'export type GQLResolver<T, P, Args, Ctx> = ((parent: P, args: Args, context: Ctx, info: GraphQLResolveInfo) => Value<T>)',
       '/**',
       ' * When used as properties of the return value of an existing resolver, this really should be',
-      ' * Result<T> instead -> So resolvers should not be returning other resolver-like objects',
+      ' * Value<T> instead -> So resolvers should not be returning other resolver-like objects',
       ' * In practice the implementation "sort of" allows it',
       ' * If a resolve function is not given, then a default resolve behavior is used',
       ' * which takes the property of the source object of the same name as the field',
-      " * and returns it as the result, or if it's a function, returns the result",
+      " * and returns it as the Value, or if it's a function, returns the Value",
       ' * of calling that function while passing along args, context and info.',
       ' * NOTE how the function signature does not have parent',
       ' */',
-      'export type GQLField<T, P, Args, Ctx> =',
-      '  | Result<T>',
-      '  | ((parent: P, args: Args, context: Ctx, info: GraphQLResolveInfo) => Result<T>)',
+      'export type GQLField<T, P, Args, Ctx> = GQLProperty<T> | GQLResolver<T, P, Args, Ctx>',
       '',
       'export type GQLTypeResolver<P, Ctx, T> = ',
       '  (parent: P, context: Ctx, info: GraphQLResolveInfo) => T',
@@ -279,9 +285,7 @@ export class ResolverTypesGenerator {
     }
 
     // generate field type
-    const fieldResolverName = `${
-      objectType.name
-    }_${uppercaseFisrtFieldName}_Field`
+    const fieldResolverName = `${objectType.name}_${uppercaseFisrtFieldName}`
 
     const typeName = getModifiedTsTypeName(
       getTypeRef(field),
