@@ -1,17 +1,17 @@
 import * as fs from 'fs'
-import { join } from 'path'
 import {
-  graphql,
   buildASTSchema,
-  parse,
-  introspectionQuery,
+  graphql,
   GraphQLSchema,
-  IntrospectionQuery,
   IntrospectionField,
   IntrospectionInputValue,
   IntrospectionListTypeRef,
   IntrospectionNamedTypeRef,
+  IntrospectionQuery,
+  introspectionQuery,
+  parse,
 } from 'graphql'
+import { join } from 'path'
 
 /**
  * Send introspection query to a graphql schema
@@ -31,11 +31,8 @@ export const introspectSchema = async (
   return data as IntrospectionQuery
 }
 
-export async function introspect(
-  schemaContents: string,
-): Promise<IntrospectionQuery> {
-  const schema = buildASTSchema(parse(schemaContents))
-  return introspectSchema(schema)
+export function buildSchemaFromTypeDefs(schemaContents: string): GraphQLSchema {
+  return buildASTSchema(parse(schemaContents))
 }
 
 function klawSync(path: string, filterRegex: RegExp, fileNames: string[] = []) {
@@ -55,13 +52,6 @@ export const getSchemaContentViaLocalFile = (path: string): string => {
     .map(filePath => fs.readFileSync(filePath, 'utf-8'))
     .join('\n')
   return allTypeDefs
-}
-
-export const introspectSchemaViaLocalFile = async (
-  path: string,
-): Promise<IntrospectionQuery> => {
-  const allTypeDefs = getSchemaContentViaLocalFile(path)
-  return await introspect(allTypeDefs)
 }
 
 export interface SimpleTypeDescription {
@@ -99,9 +89,7 @@ export interface GraphqlDescription {
 /**
  * Convert description and deprecated directives into JSDoc
  */
-export const descriptionToJSDoc = (
-  description: GraphqlDescription,
-): string[] => {
+export function descriptionToJSDoc(description: GraphqlDescription): string[] {
   let line = description.description || ''
 
   const { isDeprecated, deprecationReason } = description
@@ -125,9 +113,9 @@ export interface FieldType {
   refName: string
   refKind: string
 }
-export const getFieldRef = (
+export function getFieldRef(
   field: IntrospectionField | IntrospectionInputValue,
-): FieldType => {
+): FieldType {
   let fieldModifier: string[] = []
 
   let typeRef = field.type
@@ -144,10 +132,7 @@ export const getFieldRef = (
   }
 }
 
-export const formatTabSpace = (
-  lines: string[],
-  tabSpaces: number,
-): string[] => {
+export function formatTabSpace(lines: string[], tabSpaces: number): string[] {
   let result: string[] = []
 
   let indent = 0
@@ -171,11 +156,11 @@ export const formatTabSpace = (
   return result
 }
 
-export const createFieldRef = (
+export function createFieldRef(
   fieldName: string,
   refName: string,
   fieldModifier: string,
-): string => {
+): string {
   switch (fieldModifier) {
     case '': {
       return `${fieldName}?: ${refName}`
@@ -219,10 +204,7 @@ export const createFieldRef = (
   }
 }
 
-export const gqlScalarToTS = (
-  scalarName: string,
-  typePrefix: string,
-): string => {
+export function gqlScalarToTS(scalarName: string, typePrefix: string): string {
   switch (scalarName) {
     case 'Int':
     case 'Float':

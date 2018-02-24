@@ -13,7 +13,7 @@ import {
   IntrospectionTypeRef,
 } from 'graphql/utilities/introspectionQuery'
 
-import { GenerateTypescriptOptions } from './types'
+import { GenerateTypescriptOptions } from './options'
 import {
   createFieldRef,
   descriptionToJSDoc,
@@ -28,7 +28,10 @@ export interface GenerateResolversResult {
   body: string[]
 }
 
-export class TSResolverGenerator {
+/**
+ * Generate object, interface and union, plus scalar resolvers
+ */
+export class ResolverTypesGenerator {
   protected importHeader: string[] = []
   protected resolverInterfaces: string[] = []
   protected resolverObject: string[] = []
@@ -220,11 +223,6 @@ export type GQLTypeResolver<P, Ctx, T> =
       ].join(' ')
 
       fieldResolversTypeDefs.push('', argsTypeDefs)
-      // argsType = [
-      //   `{ `,
-      //   ...argsBody,
-      //   ' }'
-      // ].join('');
     }
 
     // generate field type

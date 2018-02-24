@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 
-import * as yargs from 'yargs'
 import * as path from 'path'
-import { generateTypeScriptTypes } from './index'
+import * as yargs from 'yargs'
+
+import { generateTypeScriptTypes } from '.'
 
 // Make sure unhandled errors in async code are propagated correctly
 process.on('unhandledRejection', error => {

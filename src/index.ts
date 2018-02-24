@@ -1,22 +1,20 @@
 import * as fs from 'fs'
-import * as path from 'path'
 import { GraphQLSchema } from 'graphql'
-import { GenerateTypescriptOptions, defaultOptions } from './types'
-import {
-  TSResolverGenerator,
-  GenerateResolversResult,
-} from './typescriptResolverGenerator'
-import { TypeScriptGenerator } from './typescriptGenerator'
-import {
-  formatTabSpace,
-  introspectSchema,
-  getSchemaContentViaLocalFile,
-  introspect,
-} from './utils'
+import * as path from 'path'
 import { isString } from 'util'
-import { IntrospectionQuery } from 'graphql/utilities/introspectionQuery'
 
-export { GenerateTypescriptOptions } from './types'
+import { defaultOptions, GenerateTypescriptOptions } from './options'
+import {
+  GenerateResolversResult,
+  ResolverTypesGenerator,
+} from './resolver-types-generator'
+import { SimpleTypesGenerator } from './simple-types-generator'
+import {
+  buildSchemaFromTypeDefs,
+  formatTabSpace,
+  getSchemaContentViaLocalFile,
+  introspectSchema,
+} from './utils'
 
 const packageJson = require(path.join(__dirname, '../package.json'))
 
@@ -41,23 +39,15 @@ const typeResolversDecoration = [
   ' *********************************/',
 ]
 
-export const generateTSTypesAsString = async (
-  schema: GraphQLSchema | string,
+export async function generateTSTypesFromSchema(
+  schema: GraphQLSchema,
   options: GenerateTypescriptOptions,
-): Promise<string> => {
+): Promise<string> {
   const mergedOptions = { ...defaultOptions, ...options }
 
-  let introspectResult: IntrospectionQuery
-  let schemaContent = ''
-  if (isString(schema)) {
-    schemaContent = getSchemaContentViaLocalFile(path.resolve(schema))
-    introspectResult = await introspect(schemaContent)
-    // introspectResult = await introspectSchemaViaLocalFile(path.resolve(schema));
-  } else {
-    introspectResult = await introspectSchema(schema)
-  }
+  const introspectResult = await introspectSchema(schema)
 
-  const tsGenerator = new TypeScriptGenerator(mergedOptions)
+  const tsGenerator = new SimpleTypesGenerator(mergedOptions)
   const typeDefs = await tsGenerator.generate(introspectResult)
 
   let typeResolvers: GenerateResolversResult = {
@@ -65,19 +55,13 @@ export const generateTSTypesAsString = async (
     importHeader: [],
   }
   if (!options.noResolver) {
-    const tsResolverGenerator = new TSResolverGenerator(mergedOptions)
+    const tsResolverGenerator = new ResolverTypesGenerator(mergedOptions)
     typeResolvers = await tsResolverGenerator.generate(introspectResult)
   }
 
-  let header = [...typeResolvers.importHeader, jsDoc]
+  let header = ['// tslint:disable', ...typeResolvers.importHeader, jsDoc]
 
   let body: string[] = [
-    `
-// tslint:disable
-      `,
-    `/* Schema Content
-      ${schemaContent}
-      */`,
     ...typeDefsDecoration,
     ...typeDefs,
     ...typeResolversDecoration,
@@ -99,11 +83,25 @@ export const generateTSTypesAsString = async (
   return formatted.join('\n')
 }
 
+export async function generateTSTypesFromTypeDefs(
+  typeDefs: string,
+  options: GenerateTypescriptOptions,
+): Promise<string> {
+  const schema = buildSchemaFromTypeDefs(typeDefs)
+  return generateTSTypesFromSchema(schema, options)
+}
+
 export async function generateTypeScriptTypes(
-  schema: GraphQLSchema | string,
+  schemaOrPath: GraphQLSchema | string,
   outputPath: string,
   options: GenerateTypescriptOptions = defaultOptions,
 ) {
-  const content = await generateTSTypesAsString(schema, options)
+  let content: string
+  if (isString(schemaOrPath)) {
+    const typeDefs = getSchemaContentViaLocalFile(path.resolve(schemaOrPath))
+    content = await generateTSTypesFromTypeDefs(typeDefs, options)
+  } else {
+    content = await generateTSTypesFromSchema(schemaOrPath, options)
+  }
   fs.writeFileSync(outputPath, content, 'utf-8')
 }

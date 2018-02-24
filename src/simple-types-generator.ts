@@ -1,24 +1,25 @@
-import { GenerateTypescriptOptions } from './types'
-import { versionMajorMinor as TSVersion } from 'typescript'
 import {
-  isBuiltinType,
+  IntrospectionEnumType,
+  IntrospectionInputObjectType,
+  IntrospectionQuery,
+  IntrospectionScalarType,
+  IntrospectionUnionType,
+} from 'graphql'
+import { versionMajorMinor as TSVersion } from 'typescript'
+
+import { GenerateTypescriptOptions } from './options'
+import {
+  createFieldRef,
   descriptionToJSDoc,
   getFieldRef,
-  createFieldRef,
   gqlScalarToTS,
+  isBuiltinType,
 } from './utils'
-import {
-  IntrospectionType,
-  IntrospectionScalarType,
-  IntrospectionEnumType,
-  IntrospectionObjectType,
-  IntrospectionUnionType,
-  IntrospectionInputObjectType,
-  IntrospectionInterfaceType,
-  IntrospectionQuery,
-} from 'graphql'
 
-export class TypeScriptGenerator {
+/**
+ * Generate Scalar, Enum, Input Object, and Union
+ */
+export class SimpleTypesGenerator {
   constructor(protected options: GenerateTypescriptOptions) {}
 
   public async generate(
@@ -165,7 +166,7 @@ export class TypeScriptGenerator {
         if (refKind === 'SCALAR') {
           refName = gqlScalarToTS(refName, this.options.typePrefix)
         } else {
-          refName = this.options.typePrefix + refName
+          refName = `${this.options.typePrefix}${refName}`
         }
 
         const fieldNameAndType = createFieldRef(
