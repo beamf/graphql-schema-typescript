@@ -3,5 +3,5 @@
  * We don't want to install apollo-link package just to use the ApolloLink type
  */
 declare module 'apollo-link' {
-    type ApolloLink = any;
+  type ApolloLink = any
 }

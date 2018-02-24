@@ -7,3 +7,4 @@ lib/
 *.tgz
 generatedTypes/
 coverage/
+beam/

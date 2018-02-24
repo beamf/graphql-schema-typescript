@@ -64,10 +64,10 @@ export const generateTSTypesAsString = async (schema: GraphQLSchema | string, op
     let body: string[] = [
       `
 // tslint:disable
-/* Schema Content
-${schemaContent}
-*/
       `,
+      `/* Schema Content
+      ${schemaContent}
+      */`,
         ...typeDefsDecoration,
         ...typeDefs,
         ...typeResolversDecoration,

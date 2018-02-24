@@ -9,7 +9,8 @@
     "test": "jest --bail",
     "lint": "tslint -p tslint.json && tsc --noEmit",
     "build": "rm -rf ./lib && tsc",
-    "prepare": "npm run lint && npm run test && npm run build"
+    "prepare": "npm run lint && npm run test && npm run build",
+    "prettier": "prettier --write **/*.ts"
   },
   "repository": {
     "type": "git",
@@ -19,6 +20,7 @@
   "author": "Jack Dang <jack.dang@itutorworld.com.au>",
   "license": "MIT",
   "devDependencies": {
+    "@beamf/common-config": "^0.2.3",
     "@playlyfe/gql": "2.3.2",
     "@types/fs-extra": "4.0.4",
     "@types/graphql": "0.11.5",
