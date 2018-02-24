@@ -65,19 +65,17 @@ export class ResolverTypesGenerator {
     }
 
     this.resolverObject = [
-      `
-// TODO: Make this handle Nullability
-// export type Result<T> = T | Promise<T>
-// export type NullableResult<T> = T | null | Promise<T | null>
-
-export type Result<T> = T | null | Promise<T | null>
-export type GQLField<P, Args, Ctx, T> =
- | Result<T>
- | ((parent: P, args: Args, context: Ctx, info: GraphQLResolveInfo) => Result<T>)
-
-export type GQLTypeResolver<P, Ctx, T> = 
-  (parent: P, context: Ctx, info: GraphQLResolveInfo) => T
-`,
+      '// TODO: Make this handle Nullability',
+      '// export type Result<T> = T | Promise<T>',
+      '// export type NullableResult<T> = T | null | Promise<T | null>',
+      '',
+      'export type Result<T> = T | null | Promise<T | null>',
+      'export type GQLField<P, Args, Ctx, T> =',
+      ' | Result<T>',
+      ' | ((parent: P, args: Args, context: Ctx, info: GraphQLResolveInfo) => Result<T>)',
+      '',
+      'export type GQLTypeResolver<P, Ctx, T> = ',
+      '  (parent: P, context: Ctx, info: GraphQLResolveInfo) => T',
       '/**',
       ' * This interface define the shape of your resolver',
       ' * Note that this type is designed to be compatible with graphql-tools resolvers',
@@ -86,28 +84,17 @@ export type GQLTypeResolver<P, Ctx, T> =
       `export interface AllResolvers {`,
     ]
 
-    gqlTypes.map(type => {
+    gqlTypes.forEach(type => {
       switch (type.kind) {
-        case 'SCALAR': {
-          this.generateCustomScalarResolver(type)
-          break
-        }
+        case 'SCALAR':
+          return this.generateCustomScalarResolver(type)
 
-        case 'OBJECT': {
-          this.generateObjectResolver(type)
-          break
-        }
+        case 'OBJECT':
+          return this.generateObjectResolver(type)
 
         case 'INTERFACE':
-        case 'UNION': {
-          this.generateTypeResolver(type)
-          break
-        }
-
-        case 'INPUT_OBJECT':
-        default: {
-          break
-        }
+        case 'UNION':
+          return this.generateTypeResolver(type)
       }
     })
 
@@ -132,14 +119,11 @@ export type GQLTypeResolver<P, Ctx, T> =
     this.resolverInterfaces.push(
       ...[
         '',
-        `// MARK: --- ${interfaceName}`,
+        `// MARK: resolverInterfacesresolverInterfaces--- ${interfaceName}`,
         '',
         `export type ${interfaceName}<P = any> = GQLTypeResolver<P, ${
           this.contextType
         }, ${possbileTypes.join(' | ')}>`,
-        // `export interface ${interfaceName}<P = any> {`,
-        // `(parent: P, context: ${this.contextType}, info: GraphQLResolveInfo): ${possbileTypes.join(' | ')};`,
-        // '}'
       ],
     )
 
