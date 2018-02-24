@@ -129,7 +129,7 @@ export class ResolverTypesGenerator {
         '',
         `// MARK: --- ${typeResolverName}`,
         '',
-        `export type ${typeResolverName}<P = any> = GQLTypeResolver<P, ${
+        `export type ${typeResolverName}<P = {}> = GQLTypeResolver<P, ${
           this.contextType
         }, ${possbileTypes.join(' | ')}>`,
       ],
@@ -219,7 +219,7 @@ export class ResolverTypesGenerator {
         `// MARK: --- ${typeResolverName}`,
         '',
         ...objectJsDoc,
-        `export interface ${typeResolverName}<P = any> ${extendStr}{`,
+        `export interface ${typeResolverName}<P = {}> ${extendStr}{`,
         ...typeResolverBody,
         '}',
         '',
