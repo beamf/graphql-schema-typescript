@@ -42,16 +42,19 @@ export class TypeScriptGenerator {
                         break;
                     }
 
-                    case 'OBJECT':
                     case 'INPUT_OBJECT':
-                    case 'INTERFACE': {
-                        typeScriptDefs = typeScriptDefs.concat(this.generateObjectType(gqlType, gqlTypes));
-                        break;
+                    {
+                      typeScriptDefs = typeScriptDefs.concat(this.generateInputObjectType(gqlType));
+                      break;
                     }
-
+                    
                     case 'UNION': {
-                        typeScriptDefs = typeScriptDefs.concat(this.generateUnionType(gqlType));
-                        break;
+                      typeScriptDefs = typeScriptDefs.concat(this.generateUnionType(gqlType));
+                      break;
+                    }
+                    case 'OBJECT':
+                    case 'INTERFACE': {
+                      break;
                     }
 
                     default: {
@@ -128,30 +131,13 @@ export class TypeScriptGenerator {
         ];
     }
 
-    private generateObjectType(
-        objectType: IntrospectionObjectType | IntrospectionInputObjectType | IntrospectionInterfaceType,
-        allGQLTypes: IntrospectionType[]
+    private generateInputObjectType(
+        objectType: IntrospectionInputObjectType
     ): string[] {
-        let fields = objectType.kind === 'INPUT_OBJECT' ? objectType.inputFields : objectType.fields;
-
-        const extendTypes: string[] = objectType.kind === 'OBJECT'
-            ? objectType.interfaces.map(i => i.name)
-            : [];
-
-        const extendGqlTypes = allGQLTypes.filter(t => extendTypes.indexOf(t.name) !== -1) as IntrospectionInterfaceType[];
-        const extendFields = extendGqlTypes.reduce<string[]>(
-            (prevFieldNames, gqlType) => {
-                return prevFieldNames.concat(gqlType.fields.map(f => f.name));
-            },
-            []
-        );
+        let fields = objectType.inputFields;
 
         const objectFields = fields.reduce<string[]>(
             (prevTypescriptDefs, field, index) => {
-
-                if (extendFields.indexOf(field.name) !== -1 && this.options.minimizeInterfaceImplementation) {
-                    return prevTypescriptDefs;
-                }
 
                 let fieldJsDoc = descriptionToJSDoc(field);
 
@@ -178,32 +164,8 @@ export class TypeScriptGenerator {
 
         const possibleTypeNames: string[] = [];
         const possibleTypeNamesMap: string[] = [];
-        if (objectType.kind === 'INTERFACE') {
-            possibleTypeNames.push(...[
-                '',
-                `/** Use this to resolve interface type ${objectType.name} */`,
-                ...this.createUnionType(
-                    `Possible${objectType.name}TypeNames`,
-                    objectType.possibleTypes.map(pt => `'${pt.name}'`)
-                )
-            ]);
-
-            possibleTypeNamesMap.push(...[
-                '',
-                `export interface ${this.options.typePrefix}${objectType.name}NameMap {`,
-                `${objectType.name}: ${this.options.typePrefix}${objectType.name};`,
-                ...objectType.possibleTypes.map(pt => {
-                    return `${pt.name}: ${this.options.typePrefix}${pt.name};`;
-                }),
-                '}'
-            ]);
-        }
-
-        const extendStr = extendTypes.length === 0
-            ? ''
-            : `extends ${extendTypes.map(t => this.options.typePrefix + t).join(', ')} `;
         return [
-            `export interface ${this.options.typePrefix}${objectType.name} ${extendStr}{`,
+            `export interface ${this.options.typePrefix}${objectType.name} {`,
             ...objectFields,
             '}',
             ...possibleTypeNames,

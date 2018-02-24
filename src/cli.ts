@@ -29,7 +29,9 @@ yargs
     async argv => {
         const { folderPath, output } = argv;
 
-        await generateTypeScriptTypes(folderPath, path.resolve(output));
+        await generateTypeScriptTypes(folderPath, path.resolve(output), {
+          typePrefix: ''
+        });
         console.log(`Typescript generated at: ${output}`);
     }
     )
