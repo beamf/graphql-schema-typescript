@@ -207,10 +207,6 @@ export type GQLTypeResolver<P, Ctx, T> =
 
       // generate field type
       const fieldResolverName = `${objectType.name}_${uppercaseFisrtFieldName}_Field`;
-
-      console.log('kind', field.type);
-      // switch (field.type.kind) {
-      // }
       
       const typeName = this.getTsType(field.type);
 
