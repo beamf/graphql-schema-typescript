@@ -240,7 +240,7 @@ export function createTsUnionType(
 ): string[] {
   let result = `export type ${typePrefix}${typeName} = ${possibleTypes.join(
     ' | ',
-  )};`
+  )}`
   if (result.length <= 80) {
     return [result]
   }
@@ -285,12 +285,10 @@ export function formatTabSpace(lines: string[], tabSpaces: number): string[] {
   for (let line of lines) {
     const trimmed = line.trim()
 
-    if (trimmed.endsWith('}') || trimmed.endsWith('};')) {
-      if (!trimmed.endsWith(' }') && !trimmed.endsWith(' };')) {
-        indent -= tabSpaces
-        if (indent < 0) {
-          indent = 0
-        }
+    if (trimmed.endsWith('}') && !trimmed.endsWith(' }')) {
+      indent -= tabSpaces
+      if (indent < 0) {
+        indent = 0
       }
     }
 

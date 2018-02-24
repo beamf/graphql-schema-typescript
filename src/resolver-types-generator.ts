@@ -56,10 +56,10 @@ export class ResolverTypesGenerator {
     const hasCustomScalar = !!gqlTypes.find(type => type.kind === 'SCALAR')
     if (hasCustomScalar) {
       this.importHeader.push(
-        `import { GraphQLResolveInfo, GraphQLScalarType } from 'graphql';`,
+        `import { GraphQLResolveInfo, GraphQLScalarType } from 'graphql'`,
       )
     } else {
-      this.importHeader.push(`import { GraphQLResolveInfo } from 'graphql';`)
+      this.importHeader.push(`import { GraphQLResolveInfo } from 'graphql'`)
     }
 
     this.allResolversInterface = [
@@ -109,7 +109,7 @@ export class ResolverTypesGenerator {
    * e.g. Json
    */
   private generateCustomScalarResolver(scalarType: IntrospectionScalarType) {
-    this.allResolversInterface.push(`${scalarType.name}?: GraphQLScalarType;`)
+    this.allResolversInterface.push(`${scalarType.name}?: GraphQLScalarType`)
   }
 
   /**
@@ -197,9 +197,9 @@ export class ResolverTypesGenerator {
         ...[
           '',
           `export interface ${this.options.typePrefix}${gqlType.name}NameMap {`,
-          `${gqlType.name}: ${this.options.typePrefix}${gqlType.name};`,
+          `${gqlType.name}: ${this.options.typePrefix}${gqlType.name}`,
           ...gqlType.possibleTypes.map(pt => {
-            return `${pt.name}: ${this.options.typePrefix}${pt.name};`
+            return `${pt.name}: ${this.options.typePrefix}${pt.name}`
           }),
           '}',
         ],
@@ -233,7 +233,7 @@ export class ResolverTypesGenerator {
     // add the type resolver to resolver object
     if (gqlType.kind === 'OBJECT') {
       this.allResolversInterface.push(
-        ...[`${gqlType.name}?: ${typeResolverName};`],
+        ...[`${gqlType.name}?: ${typeResolverName}`],
       )
     }
   }

@@ -84,11 +84,11 @@ export class SimpleTypesGenerator {
       return [
         `export type ${this.options.typePrefix}${scalarType.name} = ${
           customScalarType[scalarType.name]
-        };`,
+        }`,
       ]
     }
 
-    return [`export type ${this.options.typePrefix}${scalarType.name} = any;`]
+    return [`export type ${this.options.typePrefix}${scalarType.name} = any`]
   }
 
   private generateEnumType(enumType: IntrospectionEnumType): string[] {
@@ -194,9 +194,9 @@ export class SimpleTypesGenerator {
     const possibleTypeNamesMap = [
       '',
       `export interface ${this.options.typePrefix}${unionType.name}NameMap {`,
-      `${unionType.name}: ${this.options.typePrefix}${unionType.name};`,
+      `${unionType.name}: ${this.options.typePrefix}${unionType.name}`,
       ...unionType.possibleTypes.map(pt => {
-        return `${pt.name}: ${this.options.typePrefix}${pt.name};`
+        return `${pt.name}: ${this.options.typePrefix}${pt.name}`
       }),
       '}',
     ]
