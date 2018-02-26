@@ -47,7 +47,7 @@ yargs
       console.log(`Typescript generated at: ${output}`)
     },
   )
-  .fail(function(message: string, error: Error) {
+  .fail((message: string, error: Error) => {
     handleError(message, error)
     process.exit(1)
   })

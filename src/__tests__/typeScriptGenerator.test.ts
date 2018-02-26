@@ -1,10 +1,10 @@
+import * as fsa from 'fs-extra';
 import * as path from 'path';
 import * as rimraf from 'rimraf';
-import * as fsa from 'fs-extra';
+import { versionMajorMinor } from 'typescript';
+import { generateTypeScriptTypes } from '../index';
 import { testSchema } from './testSchema';
 import { executeCommand } from './testUtils';
-import { generateTypeScriptTypes } from '../index';
-import { versionMajorMinor } from 'typescript';
 
 const outputFolder = path.join(__dirname, 'generatedTypes');
 
@@ -25,7 +25,7 @@ function occurrences(str: string, subString: string, allowOverlapping: boolean) 
         return (str.length + 1);
     }
 
-    var n = 0,
+    let n = 0,
         pos = 0,
         step = allowOverlapping ? 1 : subString.length;
 

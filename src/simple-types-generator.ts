@@ -9,11 +9,11 @@ import {
 import { GenerateTypescriptOptions } from './options'
 import {
   createFieldRef,
+  createTsUnionType,
   descriptionToJSDoc,
   getTypeRef,
   isBuiltinType,
   isStringEnumSupported,
-  createTsUnionType,
 } from './utils'
 
 /**
@@ -115,7 +115,7 @@ export class SimpleTypesGenerator {
       ]
     }
 
-    let enumBody = enumType.enumValues.reduce<string[]>(
+    const enumBody = enumType.enumValues.reduce<string[]>(
       (prevTypescriptDefs, enumValue, index) => {
         let typescriptDefs: string[] = []
         const enumValueJsDoc = descriptionToJSDoc(enumValue)
@@ -149,11 +149,11 @@ export class SimpleTypesGenerator {
   private generateInputObjectType(
     objectType: IntrospectionInputObjectType,
   ): string[] {
-    let fields = objectType.inputFields
+    const fields = objectType.inputFields
 
     const objectFields = fields.reduce<string[]>(
       (prevTypescriptDefs, field, index) => {
-        let fieldJsDoc = descriptionToJSDoc(field)
+        const fieldJsDoc = descriptionToJSDoc(field)
 
         const typeRef = getTypeRef(field)
 

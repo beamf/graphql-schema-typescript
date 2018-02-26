@@ -7,7 +7,7 @@
   "bin": "./lib/cli.js",
   "scripts": {
     "test": "jest --bail",
-    "lint": "tslint -p tslint.json && tsc --noEmit",
+    "lint": "tslint -p tslint.json ./src/*.ts && tsc --noEmit",
     "build": "rm -rf ./lib && tsc",
     "prepare": "npm run lint && npm run test && npm run build",
     "prettier": "prettier --write **/*.ts *.json"

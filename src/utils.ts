@@ -21,7 +21,7 @@ export const introspectSchema = async (
   schema: GraphQLSchema,
 ): Promise<IntrospectionQuery> => {
   const { data, errors } = await graphql({
-    schema: schema,
+    schema,
     source: introspectionQuery,
   })
 
@@ -130,7 +130,7 @@ export interface TypeRef {
 export function getTypeRef(
   field: IntrospectionField | IntrospectionInputValue,
 ): TypeRef {
-  let modifier: string[] = []
+  const modifier: string[] = []
 
   let typeRef = field.type
 
@@ -238,14 +238,14 @@ export function createTsUnionType(
   possibleTypes: string[],
   typePrefix: string,
 ): string[] {
-  let result = `export type ${typePrefix}${typeName} = ${possibleTypes.join(
+  const result = `export type ${typePrefix}${typeName} = ${possibleTypes.join(
     ' | ',
   )}`
   if (result.length <= 80) {
     return [result]
   }
 
-  let [firstLine, rest] = result.split('=')
+  const [firstLine, rest] = result.split('=')
 
   return [
     firstLine + '=',
@@ -279,10 +279,10 @@ export const toUppercaseFirst = (value: string): string => {
 }
 
 export function formatTabSpace(lines: string[], tabSpaces: number): string[] {
-  let result: string[] = []
+  const result: string[] = []
 
   let indent = 0
-  for (let line of lines) {
+  for (const line of lines) {
     const trimmed = line.trim()
 
     if (trimmed.endsWith('}') && !trimmed.endsWith(' }')) {

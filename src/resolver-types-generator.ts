@@ -170,8 +170,8 @@ export class ResolverTypesGenerator {
       t => extendTypes.indexOf(t.name) !== -1,
     ) as IntrospectionInterfaceType[]
     const extendFields = extendGqlTypes.reduce<string[]>(
-      (prevFieldNames, gqlType) => {
-        return prevFieldNames.concat(gqlType.fields.map(f => f.name))
+      (prevFieldNames, extendGqlType) => {
+        return prevFieldNames.concat(extendGqlType.fields.map(f => f.name))
       },
       [],
     )
@@ -264,7 +264,7 @@ export class ResolverTypesGenerator {
     // generate args type
     let argsType = '{}'
 
-    let uppercaseFisrtFieldName = toUppercaseFirst(field.name)
+    const uppercaseFisrtFieldName = toUppercaseFirst(field.name)
 
     if (field.args.length > 0) {
       argsType = `${objectType.name}_${uppercaseFisrtFieldName}_Args`

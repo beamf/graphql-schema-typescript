@@ -1,6 +1,6 @@
 {
   "extends": ["@beamf/common-config/tslint"],
   "rules": {
-    "no-console": false,
+    "no-console": false
   }
 }

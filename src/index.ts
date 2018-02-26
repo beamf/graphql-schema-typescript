@@ -16,6 +16,7 @@ import {
   introspectSchema,
 } from './utils'
 
+// tslint:disable-next-line
 const packageJson = require(path.join(__dirname, '../package.json'))
 
 const jsDoc = `/**
@@ -59,7 +60,7 @@ export async function generateTSTypesFromSchema(
     typeResolvers = await tsResolverGenerator.generate(introspectResult)
   }
 
-  let header = ['// tslint:disable', ...typeResolvers.importHeader, jsDoc]
+  const header = ['// tslint:disable', ...typeResolvers.importHeader, jsDoc]
 
   let body: string[] = [
     ...typeDefsDecoration,
