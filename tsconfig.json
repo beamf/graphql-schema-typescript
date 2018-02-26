@@ -1,5 +1,5 @@
 {
-  "include": ["src/index.ts", "src/cli.ts"],
+  "include": ["src/index.ts", "src/cli.ts", "beam/schema.gen.ts"],
   "compilerOptions": {
     "target": "es5",
     "lib": ["es6", "esnext.asynciterable"],
@@ -8,6 +8,7 @@
     "outDir": "./lib",
     "noImplicitAny": false,
     "forceConsistentCasingInFileNames": true,
-    "noUnusedLocals": false
+    "noUnusedLocals": false,
+    "strictNullChecks": true
   }
 }
