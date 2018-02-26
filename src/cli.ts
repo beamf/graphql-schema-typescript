@@ -38,7 +38,7 @@ yargs
         // customScalarType: {
         //   Json: 'any',
         // },
-        minimizeInterfaceImplementation: true,
+        // minimizeInterfaceImplementation: true,
         // resolver: {
         //   contextType: 'GQLContext',
         //   importContext: 'export type GQLContext = any;',
