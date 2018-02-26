@@ -164,7 +164,9 @@ export class ResolverTypesGenerator {
     allGQLTypes: IntrospectionType[],
   ) {
     const extendTypes: string[] =
-      gqlType.kind === 'OBJECT' ? gqlType.interfaces.map(i => i.name) : []
+      gqlType.kind === 'OBJECT'
+        ? gqlType.interfaces.map(i => `${i.name}<P>`)
+        : []
 
     const extendGqlTypes = allGQLTypes.filter(
       t => extendTypes.indexOf(t.name) !== -1,
