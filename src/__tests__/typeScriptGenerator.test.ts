@@ -124,7 +124,7 @@ describe('Typescript Generator', () => {
     const generated = fsa.readFileSync(outputPath, 'utf-8')
     const occurrence = occurrences(
       generated,
-      'relatedProducts: GQLIProduct[]',
+      'relatedProducts?: IProduct_RelatedProducts<P>',
       false,
     )
     expect(occurrence).toBe(1)
@@ -148,7 +148,7 @@ describe('Typescript Generator', () => {
     const generated = fsa.readFileSync(outputPath, 'utf-8')
     expect(generated).toContain('declare global {')
     expect(generated).toContain(
-      `export type GQLUserRole = 'sysAdmin' | 'manager' | 'clerk' | 'employee';`,
+      `export type GQLUserRole = 'sysAdmin' | 'manager' | 'clerk' | 'employee'`,
     )
 
     await executeCommand(
@@ -188,12 +188,10 @@ describe('Typescript Generator', () => {
     )
   })
 
-  it('should generate from local file if argument is a string', async () => {
+  it.only('should generate from local file if argument is a string', async () => {
     const outputPath = path.join(outputFolder, 'localFile.ts')
 
-    await generateTypeScriptTypes(__dirname + '/testSchema', outputPath, {
-      noResolver: true,
-    })
+    await generateTypeScriptTypes(__dirname + '/testSchema', outputPath)
 
     await executeCommand(
       `tsc --noEmit --lib es6,esnext.asynciterable --target es5 ${outputPath}`,

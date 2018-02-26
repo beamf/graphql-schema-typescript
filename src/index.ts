@@ -55,10 +55,8 @@ export async function generateTSTypesFromSchema(
     body: [],
     importHeader: [],
   }
-  if (!options.noResolver) {
-    const tsResolverGenerator = new ResolverTypesGenerator(mergedOptions)
-    typeResolvers = await tsResolverGenerator.generate(introspectResult)
-  }
+  const tsResolverGenerator = new ResolverTypesGenerator(mergedOptions)
+  typeResolvers = await tsResolverGenerator.generate(introspectResult)
 
   const header = ['// tslint:disable', ...typeResolvers.importHeader, jsDoc]
 
@@ -100,7 +98,9 @@ export async function generateTypeScriptTypes(
   let content: string
   if (isString(schemaOrPath)) {
     const typeDefs = getSchemaContentViaLocalFile(path.resolve(schemaOrPath))
+    // console.log('typedefs', typeDefs)
     content = await generateTSTypesFromTypeDefs(typeDefs, options)
+    // console.log('content', content)
   } else {
     content = await generateTSTypesFromSchema(schemaOrPath, options)
   }
