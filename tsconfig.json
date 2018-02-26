@@ -9,6 +9,6 @@
     "noImplicitAny": false,
     "forceConsistentCasingInFileNames": true,
     "noUnusedLocals": false,
-    "strictNullChecks": true
+    "strictNullChecks": false
   }
 }
