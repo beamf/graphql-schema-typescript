@@ -41,7 +41,7 @@ yargs
         minimizeInterfaceImplementation: true,
         resolver: {
           contextType: 'GQLContext',
-          importContext: 'type GQLContext = any;',
+          importContext: 'export type GQLContext = any;',
         },
       })
       console.log(`Typescript generated at: ${output}`)
