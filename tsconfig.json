@@ -12,8 +12,7 @@
   },
   "include": [
     "src/index.ts",
-    "src/cli.ts", 
-    "beam/schema.gen.ts"
+    "src/cli.ts"
   ],
   "exclude": [
     "src/__tests__/**.*"
