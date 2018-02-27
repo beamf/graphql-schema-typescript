@@ -248,8 +248,10 @@ export class ResolverTypesGenerator {
 
     // add the type resolver to resolver object
     if (gqlType.kind === 'OBJECT') {
+      // TODO: Once we generate the models (and thus parent-types)
+      // change this from any to the expected parent type
       this.allResolversInterface.push(
-        ...[`${gqlType.name}?: ${typeResolverName}`],
+        ...[`${gqlType.name}?: ${typeResolverName}<any>`],
       )
     }
   }
