@@ -74,9 +74,9 @@ export class ResolverTypesGenerator {
       ' * of calling that function while passing along args, context and info.',
       ' * NOTE how the function signature does not have parent',
       ' */',
-      'export type GQLProperty<T, Args, Ctx> = Value<T | null> | ((args: Args, context: Ctx, info: GraphQLResolveInfo) => Value<T>)',
+      'export type GQLProperty<T, Args, Ctx> = Value<T | null> // | ((args: Args, context: Ctx, info: GraphQLResolveInfo) => Value<T>)',
       '',
-      'export type GQLResolver<T, P, Args, Ctx> = ((parent: P, args: Args, context: Ctx, info: GraphQLResolveInfo) => Value<T>)',
+      'export type GQLResolver<T, P, Args, Ctx> = (parent: P, args: Args, context: Ctx, info: GraphQLResolveInfo) => Value<T>',
       '/**',
       ' * When used as properties of the return value of an existing resolver, this really should be',
       ' * Value<T> instead -> So resolvers should not be returning other resolver-like objects',
@@ -297,7 +297,7 @@ export class ResolverTypesGenerator {
     fieldResolversTypeDefs.push(
       ...[
         ...fieldJsDocs,
-        `export type ${fieldResolverName}<P> = GQLPropertyOrResolver<${typeName}, P, ${argsType}, ${
+        `export type ${fieldResolverName}<P = {}> = GQLPropertyOrResolver<${typeName}, P, ${argsType}, ${
           this.contextType
         }>`,
       ],
