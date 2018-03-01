@@ -80,15 +80,12 @@ export class SimpleTypesGenerator {
     scalarType: IntrospectionScalarType,
   ): string[] {
     const customScalarType = this.options.customScalarType || {}
-    if (customScalarType[scalarType.name]) {
-      return [
-        `export type ${this.options.typePrefix}${scalarType.name} = ${
-          customScalarType[scalarType.name]
-        }`,
-      ]
+    const tsName = `${this.options.typePrefix}${scalarType.name}`
+    const customTsName = customScalarType[scalarType.name] || 'any'
+    if (customTsName !== tsName) {
+      return [`export type ${tsName} = ${customTsName}`]
     }
-
-    return [`export type ${this.options.typePrefix}${scalarType.name} = any`]
+    return []
   }
 
   private generateEnumType(enumType: IntrospectionEnumType): string[] {
