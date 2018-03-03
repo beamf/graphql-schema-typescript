@@ -35,6 +35,13 @@ export class ModelsGenerator {
       type => !isBuiltinType(type),
     )
 
+    const schema = introspectResult.__schema
+    const rootTypeNames = [
+      schema.queryType.name,
+      schema.mutationType && schema.mutationType.name,
+      schema.subscriptionType && schema.subscriptionType.name,
+    ].filter(n => n != null)
+
     const typeDefs: string[] = [
       // 'export type Value<T> = T | Promise<T>',
       ''
@@ -47,9 +54,16 @@ export class ModelsGenerator {
       switch (gqlType.kind) {
         case 'OBJECT':
         case 'INTERFACE': {
+          // Do not generate models for root types
+          // They have type of rootValue which is passed in at runtime much like
+          // context
+          if (rootTypeNames.indexOf(gqlType.name) !== -1) {
+            break
+          }
           typeScriptDefs = typeScriptDefs.concat(
             this.generateObjectOrInterface(gqlType, gqlTypes),
           )
+
           break
         }
         case 'SCALAR': {
