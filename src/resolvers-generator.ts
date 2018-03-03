@@ -7,6 +7,7 @@ import {
 import {
   IntrospectionField,
   IntrospectionQuery,
+  IntrospectionSchema,
   IntrospectionType,
 } from 'graphql/utilities/introspectionQuery'
 
@@ -34,17 +35,23 @@ export class ResolversGenerator {
   protected resolverMapInterface: string[] = []
   protected resolverInterfaces: string[] = []
   protected contextType: string
+  protected rootValueType: string
 
   constructor(protected options: GenerateTypescriptOptions) {
     if (options.resolver) {
       this.contextType = options.resolver.contextType
-      if (options.resolver.importContext) {
-        this.importHeader.push(options.resolver.importContext)
+      if (options.resolver.headerStatements) {
+        this.importHeader.push(options.resolver.headerStatements)
       }
     }
     if (!this.contextType || this.contextType === 'any') {
-      this.contextType = 'Ctx'
-      this.importHeader.push('export type Ctx = any')
+      this.contextType = 'Context'
+      this.importHeader.push('export type Context = any')
+    }
+
+    if (!this.rootValueType || this.rootValueType === 'any') {
+      this.rootValueType = 'RootValue'
+      this.importHeader.push('export type RootValue = any')
     }
   }
 
@@ -97,6 +104,13 @@ export class ResolversGenerator {
       `export interface ResolverMap {`,
     ]
 
+    const schema = introspectionResult.__schema
+    const rootTypeNames = [
+      schema.queryType.name,
+      schema.mutationType && schema.mutationType.name,
+      schema.subscriptionType && schema.subscriptionType.name,
+    ].filter(n => n != null)
+
     gqlTypes.forEach(type => {
       switch (type.kind) {
         case 'SCALAR':
@@ -104,10 +118,10 @@ export class ResolversGenerator {
 
         case 'OBJECT':
           // this.generateObjectModel(type, gqlTypes)
-          return this.generateObjectResolver(type, gqlTypes)
+          return this.generateObjectResolver(type, gqlTypes, rootTypeNames)
 
         case 'INTERFACE':
-          this.generateObjectResolver(type, gqlTypes)
+          this.generateObjectResolver(type, gqlTypes, rootTypeNames)
           return this.generateResolveTypeResolver(type)
         // TODO: Right now GraphQL implements interface info is lost in typescript
         // Should add typescript interface and add the relationship back in
@@ -165,6 +179,7 @@ export class ResolversGenerator {
   private generateObjectResolver(
     gqlType: IntrospectionObjectType | IntrospectionInterfaceType,
     allGQLTypes: IntrospectionType[],
+    rootTypeNames: string[],
   ) {
     const extendTypes: string[] =
       gqlType.kind === 'OBJECT' ? gqlType.interfaces.map(i => i.name) : []
@@ -179,7 +194,9 @@ export class ResolversGenerator {
       [],
     )
 
-    const typeName = `${this.options.typePrefix}${gqlType.name}`
+    const isRootType = rootTypeNames.indexOf(gqlType.name) !== -1
+
+    const typeName = isRootType ? this.rootValueType : `${this.options.typePrefix}${gqlType.name}`
     const typeResolversName = `${typeName}Resolvers`
     const typeResolverBody: string[] = []
     const fieldResolversTypeDefs: string[] = []
@@ -191,7 +208,7 @@ export class ResolversGenerator {
       ) {
         return
       }
-      const res = this.generateObjectFieldResolver(gqlType, field)
+      const res = this.generateObjectFieldResolver(gqlType, field, typeName)
       typeResolverBody.push(...res.typeResolverBody)
       fieldResolversTypeDefs.push(...res.fieldResolversTypeDefs)
     })
@@ -233,9 +250,8 @@ export class ResolversGenerator {
   private generateObjectFieldResolver(
     objectType: IntrospectionObjectType | IntrospectionInterfaceType,
     field: IntrospectionField,
+    parentTypeName: string,
   ) {
-
-    const parentTypeName = `${this.options.typePrefix}${objectType.name}`
     const typeResolverBody: string[] = []
     const fieldResolversTypeDefs: string[] = []
 
@@ -263,7 +279,9 @@ export class ResolversGenerator {
     }
 
     // generate field type
-    const fieldResolverName = `${objectType.name}_${uppercaseFisrtFieldName}_Resolver`
+    const fieldResolverName = `${
+      objectType.name
+    }_${uppercaseFisrtFieldName}_Resolver`
 
     const typeName = getModifiedTsTypeName(
       getTypeRef(field),

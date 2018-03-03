@@ -33,11 +33,14 @@ export interface GenerateTypescriptOptions {
     /** Name of your graphql context type. Default to `any` if not specified */
     contextType?: string
 
+    /** Name of your graphql RootValue type. Default to `any` if not specified */
+    rootValueType?: string
+
     /**
-     * You can either make your graphql context type global, so that the generated file can link to it,
+     * You can either make your graphql context / root value type global, so that the generated file can link to it,
      * or provide an import statement to be injected via this option
      */
-    importContext?: string
+    headerStatements?: string
   }
 }
 
@@ -46,5 +49,6 @@ export const defaultOptions: GenerateTypescriptOptions = {
   typePrefix: 'GQL',
   resolver: {
     contextType: 'any',
+    rootValueType: 'any',
   },
 }
