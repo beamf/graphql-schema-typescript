@@ -197,7 +197,7 @@ export class ResolversGenerator {
     const isRootType = rootTypeNames.indexOf(gqlType.name) !== -1
 
     const typeName = isRootType ? this.rootValueType : `${this.options.typePrefix}${gqlType.name}`
-    const typeResolversName = `${typeName}Resolvers`
+    const typeResolversName = `${this.options.typePrefix}${gqlType.name}Resolvers`
     const typeResolverBody: string[] = []
     const fieldResolversTypeDefs: string[] = []
 
