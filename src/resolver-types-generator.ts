@@ -31,7 +31,7 @@ export interface GenerateResolversResult {
  */
 export class ResolverTypesGenerator {
   protected importHeader: string[] = []
-  protected allResolversInterface: string[] = []
+  protected resolverMapInterface: string[] = []
   protected resolverInterfaces: string[] = []
   protected contextType: string
 
@@ -41,8 +41,10 @@ export class ResolverTypesGenerator {
       if (options.resolver.importContext) {
         this.importHeader.push(options.resolver.importContext)
       }
-    } else {
-      this.contextType = 'any'
+    }
+    if (!this.contextType || this.contextType === 'any') {
+      this.contextType = 'Ctx'
+      this.importHeader.push('export type Ctx = any')
     }
   }
 
@@ -62,13 +64,13 @@ export class ResolverTypesGenerator {
       this.importHeader.push(`import { GraphQLResolveInfo } from 'graphql'`)
     }
 
-    this.allResolversInterface = [
+    this.resolverMapInterface = [
       '',
       'export type Value<T> = T | Promise<T>',
       '/**',
-      ' * The reason property is nullable even for non-null field is because we do not in the model',
-      ' * whether the field is or possibly implemented by the resolver.',
-      ' * If a resolve function is not given, then a default resolve behavior is used',
+      ' * Technically a property can be a function also. We DO NOT support this use case',
+      ' * because it does not feel like a good coding pattern to put resolver-like functions',
+      ' * on to of the object itself. If needed, property with getter can be used',
       ' * which takes the property of the source object of the same name as the field',
       " * and returns it as the Value, or if it's a function, returns the Value",
       ' * of calling that function while passing along args, context and info.',
@@ -92,7 +94,7 @@ export class ResolverTypesGenerator {
       ' * Note that this type is designed to be compatible with graphql-tools resolvers',
       ' * However, you can still use other generated interfaces to make your resolver type-safed',
       ' */',
-      `export interface AllResolvers {`,
+      `export interface ResolverMap {`,
     ]
 
     gqlTypes.forEach(type => {
@@ -101,6 +103,7 @@ export class ResolverTypesGenerator {
           return this.generateCustomScalarResolver(type)
 
         case 'OBJECT':
+          // this.generateObjectModel(type, gqlTypes)
           return this.generateObjectResolver(type, gqlTypes)
 
         case 'INTERFACE':
@@ -113,11 +116,11 @@ export class ResolverTypesGenerator {
       }
     })
 
-    this.allResolversInterface.push('}')
+    this.resolverMapInterface.push('}')
 
     return {
       importHeader: this.importHeader,
-      body: [...this.allResolversInterface, ...this.resolverInterfaces],
+      body: [...this.resolverMapInterface, ...this.resolverInterfaces],
     }
   }
 
@@ -125,7 +128,7 @@ export class ResolverTypesGenerator {
    * e.g. Json
    */
   private generateCustomScalarResolver(scalarType: IntrospectionScalarType) {
-    this.allResolversInterface.push(`${scalarType.name}?: GraphQLScalarType`)
+    this.resolverMapInterface.push(`${scalarType.name}?: GraphQLScalarType`)
   }
 
   /**
@@ -151,7 +154,7 @@ export class ResolverTypesGenerator {
       ],
     )
 
-    this.allResolversInterface.push(
+    this.resolverMapInterface.push(
       `${type.name}?: {  __resolveType: ${typeResolverName} }`,
     )
   }
@@ -176,7 +179,8 @@ export class ResolverTypesGenerator {
       [],
     )
 
-    const typeResolverName = `${this.options.typePrefix}${gqlType.name}`
+    const typeName = `${this.options.typePrefix}${gqlType.name}`
+    const typeResolversName = `${typeName}Resolvers`
     const typeResolverBody: string[] = []
     const fieldResolversTypeDefs: string[] = []
 
@@ -194,64 +198,34 @@ export class ResolverTypesGenerator {
 
     const objectJsDoc = descriptionToJSDoc(gqlType)
 
-    const possibleTypeNames: string[] = []
-    const possibleTypeNamesMap: string[] = []
-    if (gqlType.kind === 'INTERFACE') {
-      possibleTypeNames.push(
-        ...[
-          '',
-          `/** Use this to resolve interface type ${gqlType.name} */`,
-          ...createTsUnionType(
-            `Possible${gqlType.name}TypeNames`,
-            gqlType.possibleTypes.map(pt => `'${pt.name}'`),
-            this.options.typePrefix,
-          ),
-        ],
-      )
-
-      possibleTypeNamesMap.push(
-        ...[
-          '',
-          `export interface ${this.options.typePrefix}${gqlType.name}NameMap {`,
-          `${gqlType.name}: ${this.options.typePrefix}${gqlType.name}`,
-          ...gqlType.possibleTypes.map(pt => {
-            return `${pt.name}: ${this.options.typePrefix}${pt.name}`
-          }),
-          '}',
-        ],
-      )
-    }
-
     const extendStr =
       extendTypes.length === 0
         ? ''
         : `extends ${extendTypes
-            .map(t => `${this.options.typePrefix}${t}<P>`)
+            .map(t => `${this.options.typePrefix}${t}Resolvers<P>`)
             .join(', ')} `
 
     this.resolverInterfaces.push(
       ...[
         '',
-        `// MARK: --- ${typeResolverName}`,
+        `// MARK: --- ${typeResolversName}`,
         '',
         ...objectJsDoc,
-        `export interface ${typeResolverName}<P = {}> ${extendStr}{`,
+        `export interface ${typeResolversName}<P = ${typeName}> ${extendStr}{`,
         ...typeResolverBody,
         '}',
         '',
         '',
         ...fieldResolversTypeDefs,
-        ...possibleTypeNames,
-        ...possibleTypeNamesMap,
       ],
     )
 
     // add the type resolver to resolver object
     if (gqlType.kind === 'OBJECT') {
-      // TODO: Once we generate the models (and thus parent-types)
-      // change this from any to the expected parent type
-      this.allResolversInterface.push(
-        ...[`${gqlType.name}?: ${typeResolverName}<any>`],
+      // NOTE: Technically this does not let consumer override the resolver parent type
+      // with custom type. However will sufficient for now.
+      this.resolverMapInterface.push(
+        ...[`${gqlType.name}?: ${typeResolversName}`],
       )
     }
   }
@@ -260,6 +234,8 @@ export class ResolverTypesGenerator {
     objectType: IntrospectionObjectType | IntrospectionInterfaceType,
     field: IntrospectionField,
   ) {
+
+    const parentTypeName = `${this.options.typePrefix}${objectType.name}`
     const typeResolverBody: string[] = []
     const fieldResolversTypeDefs: string[] = []
 
@@ -287,7 +263,7 @@ export class ResolverTypesGenerator {
     }
 
     // generate field type
-    const fieldResolverName = `${objectType.name}_${uppercaseFisrtFieldName}`
+    const fieldResolverName = `${objectType.name}_${uppercaseFisrtFieldName}_Resolver`
 
     const typeName = getModifiedTsTypeName(
       getTypeRef(field),
@@ -299,7 +275,7 @@ export class ResolverTypesGenerator {
     fieldResolversTypeDefs.push(
       ...[
         ...fieldJsDocs,
-        `export type ${fieldResolverName}<P = {}> = GQLPropertyOrResolver<${typeName}, P, ${argsType}, ${
+        `export type ${fieldResolverName}<P = ${parentTypeName}> = GQLResolver<${typeName}, P, ${argsType}, ${
           this.contextType
         }>`,
       ],

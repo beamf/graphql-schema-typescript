@@ -1,8 +1,12 @@
 import {
   IntrospectionEnumType,
+  IntrospectionField,
   IntrospectionInputObjectType,
+  IntrospectionInterfaceType,
+  IntrospectionObjectType,
   IntrospectionQuery,
   IntrospectionScalarType,
+  IntrospectionType,
   IntrospectionUnionType,
 } from 'graphql'
 
@@ -11,9 +15,11 @@ import {
   createFieldRef,
   createTsUnionType,
   descriptionToJSDoc,
+  getModifiedTsTypeName,
   getTypeRef,
   isBuiltinType,
   isStringEnumSupported,
+  toUppercaseFirst,
 } from './utils'
 
 /**
@@ -29,17 +35,25 @@ export class SimpleTypesGenerator {
       type => !isBuiltinType(type),
     )
 
+    const typeDefs: string[] = [
+      // 'export type Value<T> = T | Promise<T>',
+      ''
+    ]
+
     return gqlTypes.reduce<string[]>((prevTypescriptDefs, gqlType) => {
       const jsDoc = descriptionToJSDoc({ description: gqlType.description })
-      let typeScriptDefs: string[] = [].concat(jsDoc)
+      let typeScriptDefs: string[] = []
 
       switch (gqlType.kind) {
         case 'OBJECT':
         case 'INTERFACE': {
-          // These will be handled by resolver-types-generator
-          return prevTypescriptDefs
+          typeScriptDefs = typeScriptDefs.concat(
+            this.generateObjectOrInterface(gqlType, gqlTypes),
+          )
+          break
         }
         case 'SCALAR': {
+          typeScriptDefs = typeScriptDefs.concat(jsDoc)
           typeScriptDefs = typeScriptDefs.concat(
             this.generateCustomScalarType(gqlType),
           )
@@ -47,11 +61,13 @@ export class SimpleTypesGenerator {
         }
 
         case 'ENUM': {
+          typeScriptDefs = typeScriptDefs.concat(jsDoc)
           typeScriptDefs = typeScriptDefs.concat(this.generateEnumType(gqlType))
           break
         }
 
         case 'INPUT_OBJECT': {
+          typeScriptDefs = typeScriptDefs.concat(jsDoc)
           typeScriptDefs = typeScriptDefs.concat(
             this.generateInputObjectType(gqlType),
           )
@@ -59,6 +75,7 @@ export class SimpleTypesGenerator {
         }
 
         case 'UNION': {
+          typeScriptDefs = typeScriptDefs.concat(jsDoc)
           typeScriptDefs = typeScriptDefs.concat(
             this.generateUnionType(gqlType),
           )
@@ -73,7 +90,7 @@ export class SimpleTypesGenerator {
       typeScriptDefs.push('')
 
       return prevTypescriptDefs.concat(typeScriptDefs)
-    }, [])
+    }, typeDefs)
   }
 
   private generateCustomScalarType(
@@ -211,5 +228,107 @@ export class SimpleTypesGenerator {
     )
 
     return [...unionTypeTSDefs, ...possibleTypesNames, ...possibleTypeNamesMap]
+  }
+
+  /**
+   * e.g. type User { id: string }
+   */
+  private generateObjectOrInterface(
+    gqlType: IntrospectionObjectType | IntrospectionInterfaceType,
+    allGQLTypes: IntrospectionType[],
+  ): string[] {
+    const extendTypes: string[] =
+      gqlType.kind === 'OBJECT' ? gqlType.interfaces.map(i => i.name) : []
+
+    const extendGqlTypes = allGQLTypes.filter(
+      t => extendTypes.indexOf(t.name) !== -1,
+    ) as IntrospectionInterfaceType[]
+    const extendFields = extendGqlTypes.reduce<string[]>(
+      (prevFieldNames, extendGqlType) => {
+        return prevFieldNames.concat(extendGqlType.fields.map(f => f.name))
+      },
+      [],
+    )
+
+    const modelName = `${this.options.typePrefix}${gqlType.name}`
+    const body: string[] = []
+
+    gqlType.fields.forEach(field => {
+      if (
+        extendFields.indexOf(field.name) !== -1 &&
+        this.options.minimizeInterfaceImplementation
+      ) {
+        return
+      }
+      const res = this.generateObjectField(gqlType, field)
+      body.push(...res)
+    })
+
+    const objectJsDoc = descriptionToJSDoc(gqlType)
+
+    const possibleTypeNames: string[] = []
+    const possibleTypeNamesMap: string[] = []
+    if (gqlType.kind === 'INTERFACE') {
+      possibleTypeNames.push(
+        ...[
+          '',
+          `/** Use this to resolve interface type ${gqlType.name} */`,
+          ...createTsUnionType(
+            `Possible${gqlType.name}TypeNames`,
+            gqlType.possibleTypes.map(pt => `'${pt.name}'`),
+            this.options.typePrefix,
+          ),
+        ],
+      )
+
+      possibleTypeNamesMap.push(
+        ...[
+          '',
+          `export interface ${this.options.typePrefix}${gqlType.name}NameMap {`,
+          `${gqlType.name}: ${this.options.typePrefix}${gqlType.name}`,
+          ...gqlType.possibleTypes.map(pt => {
+            return `${pt.name}: ${this.options.typePrefix}${pt.name}`
+          }),
+          '}',
+        ],
+      )
+    }
+
+    const extendStr =
+      extendTypes.length === 0
+        ? ''
+        : `extends ${extendTypes
+            .map(t => `${this.options.typePrefix}${t}`)
+            .join(', ')} `
+
+    return [
+      `// MARK: --- ${modelName}`,
+      '',
+      ...objectJsDoc,
+      `export interface ${modelName} ${extendStr}{`,
+      ...body,
+      '}',
+      ...possibleTypeNames,
+      ...possibleTypeNamesMap,
+    ]
+  }
+
+  private generateObjectField(
+    objectType: IntrospectionObjectType | IntrospectionInterfaceType,
+    field: IntrospectionField,
+  ): string[] {
+
+    const uppercaseFisrtFieldName = toUppercaseFirst(field.name)
+
+    // If there is argument, require an explicit resolver for it
+    if (field.args.length > 0) {
+      return
+    }
+    const typeName = getModifiedTsTypeName(
+      getTypeRef(field),
+      this.options.typePrefix,
+    )
+
+    return [`${field.name}?: ${typeName}`]
   }
 }
