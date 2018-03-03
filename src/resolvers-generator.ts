@@ -73,7 +73,6 @@ export class ResolversGenerator {
 
     this.resolverMapInterface = [
       '',
-      'export type Value<T> = T | Promise<T>',
       '/**',
       ' * Technically a property can be a function also. We DO NOT support this use case',
       ' * because it does not feel like a good coding pattern to put resolver-like functions',
@@ -83,9 +82,9 @@ export class ResolversGenerator {
       ' * of calling that function while passing along args, context and info.',
       ' * NOTE how the function signature does not have parent',
       ' */',
-      'export type GQLProperty<T, Args, Ctx> = Value<T | null> // | ((args: Args, context: Ctx, info: GraphQLResolveInfo) => Value<T>)',
+      'export type GQLProperty<T, Args, Ctx> = T | Promise<T> // | ((args: Args, context: Ctx, info: GraphQLResolveInfo) => T | Promise<T>)',
       '',
-      'export type GQLResolver<T, P, Args, Ctx> = (parent: P, args: Args, context: Ctx, info: GraphQLResolveInfo) => Value<T>',
+      'export type GQLResolver<T, P, Args, Ctx> = (parent: P, args: Args, context: Ctx, info: GraphQLResolveInfo) => T | Promise<T>',
       '/**',
       ' * When used as properties of the return value of an existing resolver, this really should be',
       ' * Value<T> instead -> So resolvers should not be returning other resolver-like objects',
