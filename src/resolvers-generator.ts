@@ -29,7 +29,7 @@ export interface GenerateResolversResult {
 /**
  * Generate object, interface and union, plus scalar resolvers
  */
-export class ResolverTypesGenerator {
+export class ResolversGenerator {
   protected importHeader: string[] = []
   protected resolverMapInterface: string[] = []
   protected resolverInterfaces: string[] = []

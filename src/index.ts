@@ -1,20 +1,14 @@
-import * as fs from 'fs'
-import { GraphQLSchema } from 'graphql'
-import * as path from 'path'
-import { isString } from 'util'
+import * as fs from 'fs';
+import { GraphQLSchema } from 'graphql';
+import * as path from 'path';
+import { isString } from 'util';
 
-import { defaultOptions, GenerateTypescriptOptions } from './options'
+import { ModelsGenerator } from './models-generator';
+import { defaultOptions, GenerateTypescriptOptions } from './options';
+import { GenerateResolversResult, ResolversGenerator } from './resolvers-generator';
 import {
-  GenerateResolversResult,
-  ResolverTypesGenerator,
-} from './resolver-types-generator'
-import { SimpleTypesGenerator } from './simple-types-generator'
-import {
-  buildSchemaFromTypeDefs,
-  formatTabSpace,
-  getSchemaContentViaLocalFile,
-  introspectSchema,
-} from './utils'
+    buildSchemaFromTypeDefs, formatTabSpace, getSchemaContentViaLocalFile, introspectSchema
+} from './utils';
 
 // tslint:disable-next-line
 const packageJson = require(path.join(__dirname, '../package.json'))
@@ -27,7 +21,7 @@ const jsDoc = `/**
 const typeDefsDecoration = [
   '/*******************************',
   ' *                             *',
-  ' *          TYPE DEFS          *',
+  ' *          Models             *',
   ' *                             *',
   ' *******************************/',
 ]
@@ -35,7 +29,7 @@ const typeDefsDecoration = [
 const typeResolversDecoration = [
   '/*********************************',
   ' *                               *',
-  ' *         TYPE RESOLVERS        *',
+  ' *         Resolvers             *',
   ' *                               *',
   ' *********************************/',
 ]
@@ -48,14 +42,14 @@ export async function generateTSTypesFromSchema(
 
   const introspectResult = await introspectSchema(schema)
 
-  const tsGenerator = new SimpleTypesGenerator(mergedOptions)
+  const tsGenerator = new ModelsGenerator(mergedOptions)
   const typeDefs = await tsGenerator.generate(introspectResult)
 
   let typeResolvers: GenerateResolversResult = {
     body: [],
     importHeader: [],
   }
-  const tsResolverGenerator = new ResolverTypesGenerator(mergedOptions)
+  const tsResolverGenerator = new ResolversGenerator(mergedOptions)
   typeResolvers = await tsResolverGenerator.generate(introspectResult)
 
   const header = ['// tslint:disable', ...typeResolvers.importHeader, jsDoc]

@@ -25,7 +25,7 @@ import {
 /**
  * Generate Scalar, Enum, Input Object, and Union
  */
-export class SimpleTypesGenerator {
+export class ModelsGenerator {
   constructor(protected options: GenerateTypescriptOptions) {}
 
   public async generate(
