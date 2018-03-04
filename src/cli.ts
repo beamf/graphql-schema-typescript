@@ -39,10 +39,11 @@ yargs
         //   Json: 'any',
         // },
         minimizeInterfaceImplementation: true,
-        // resolver: {
-        //   contextType: 'GQLContext',
-        //   importContext: 'export type GQLContext = any;',
-        // },
+        resolver: {
+          contextType: 'GQLContext',
+          rootValueType: 'GraphqlRootValue',
+          headerStatements: 'export type GQLContext = any; export type GraphqlRootValue = any;',
+        },
       })
       console.log(`Typescript generated at: ${output}`)
     },

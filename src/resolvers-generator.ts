@@ -40,6 +40,7 @@ export class ResolversGenerator {
   constructor(protected options: GenerateTypescriptOptions) {
     if (options.resolver) {
       this.contextType = options.resolver.contextType
+      this.rootValueType = options.resolver.rootValueType
       if (options.resolver.headerStatements) {
         this.importHeader.push(options.resolver.headerStatements)
       }
