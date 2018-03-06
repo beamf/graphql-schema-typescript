@@ -44,7 +44,17 @@ export class ModelsGenerator {
 
     const typeDefs: string[] = [
       // 'export type Value<T> = T | Promise<T>',
-      ''
+      '',
+      '/**',
+      ' * Technically a property can be a function also. We DO NOT support this use case',
+      ' * because it does not feel like a good coding pattern to put resolver-like functions',
+      ' * on to of the object itself. If needed, property with getter can be used',
+      ' * which takes the property of the source object of the same name as the field',
+      " * and returns it as the Value, or if it's a function, returns the Value",
+      ' * of calling that function while passing along args, context and info.',
+      ' * NOTE how the function signature does not have parent',
+      ' */',
+      'export type GQLProperty<T, Args, Ctx> = T | Promise<T> | ((args: Args, context: Ctx, info: GraphQLResolveInfo) => T | Promise<T>)',
     ]
 
     return gqlTypes.reduce<string[]>((prevTypescriptDefs, gqlType) => {
@@ -333,16 +343,19 @@ export class ModelsGenerator {
   ): string[] {
 
     const uppercaseFisrtFieldName = toUppercaseFirst(field.name)
-
-    // If there is argument, require an explicit resolver for it
-    if (field.args.length > 0) {
-      return
-    }
+    
     const typeName = getModifiedTsTypeName(
       getTypeRef(field),
       this.options.typePrefix,
     )
 
-    return [`${field.name}?: ${typeName}`]
+    let argsType = '{}'
+    if (field.args.length > 0) {
+      // Generated in resolver-generator.ts. (TODO: Merge)
+      argsType = `${objectType.name}_${uppercaseFisrtFieldName}_Args`
+    }
+    // Generated in resolver-generator.ts
+    const contextType = this.options.resolver && this.options.resolver.contextType || 'Context'
+    return [`${field.name}?: GQLProperty<${typeName}, ${argsType}, ${contextType}>`]
   }
 }
